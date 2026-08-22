@@ -91,10 +91,13 @@ def _replacements(args: argparse.Namespace) -> list[tuple[str, str]]:
     env_prefix = args.env_prefix.rstrip("_").upper() + "_"
     # For Mkt6 the distribution name IS the resource stem, so --dist defaults to --resource
     # (not a prefixing rule). Order matters: replace the longer, more specific strings
-    # first; here the dist and resource stems are identical, so the resource pass is a
-    # no-op after the dist pass unless a distinct --dist was supplied.
+    # first.
+    # The distribution name is the same token as the resource name, so replacing it bare
+    # consumes every occurrence and leaves the entry below doing nothing: a --dist that
+    # differs from --resource would silently rewrite the resource name too. Anchoring the
+    # distribution on its pyproject declaration keeps the two independently meaningful.
     return [
-        (_OLD_DIST, args.dist or args.resource),
+        (f'name = "{_OLD_DIST}"', f'name = "{args.dist or args.resource}"'),
         (_OLD_PACKAGE, args.package),
         (_OLD_RESOURCE, args.resource),
         (_OLD_CLI, args.cli),
