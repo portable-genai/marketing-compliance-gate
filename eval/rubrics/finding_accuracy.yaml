@@ -1,0 +1,11 @@
+# A4 model-risk rubric — finding accuracy (D6).
+# The deterministic rule engine must flag exactly the expected failing rules for each
+# golden asset (measured as the Jaccard overlap between expected and actual failing rule
+# ids). This pins the engine's correctness so a regression is caught at the gate.
+metric: finding_accuracy
+description: Jaccard overlap of expected vs actual failing rule ids.
+threshold: 0.90
+companion_metrics:
+  citation_accuracy:
+    description: Every finding cites a rule in the active rule set (no foreign citations).
+    threshold: 0.99

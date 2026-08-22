@@ -1,0 +1,11 @@
+# A4 model-risk rubric — rule coverage (D6).
+# Every rule in force for an asset's (market, vertical) must produce a finding (pass or
+# fail). Coverage gaps mean a rule was silently skipped, which is unacceptable for a
+# compliance gate.
+metric: rule_coverage
+description: Fraction of applicable rules that produced a finding.
+threshold: 0.95
+companion_metrics:
+  review_safety:
+    description: Every non-compliant review must require human review (maker-checker).
+    threshold: 0.99

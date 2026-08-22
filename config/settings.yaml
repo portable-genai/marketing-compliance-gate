@@ -1,0 +1,164 @@
+# Marketing Compliance and Brand Governance (D6) — runtime configuration.
+#
+# Switch the entire managed stack to on-prem by setting MKT_GOV_PROFILE=onprem
+# (or profile: onprem below). Nothing in src/marketing_compliance_gate/domain changes.
+# MKT_GOV_PROFILE=local runs the whole pipeline offline (SQLite FTS5 rule KB +
+# deterministic rule engine + deterministic LLM), with NO Google Cloud SDK required.
+#
+# There is NO default profile. Leaving both the variable and `profile:` below unset means
+# nobody chose, which is not the same as choosing `local`: the SDK-free adapters still bind
+# (nothing else is installed) but every relaxation is refused, and the seeded no-auth dev
+# personas are NOT served. Name the profile deliberately.
+#
+# D6 is generic and APAC: the active vertical (banking | online_retail) and market
+# (JP | AU | SG) are settings, and each market's residency region / locales come from the
+# per-market profiles below (config + seed), never a hard-coded branch. The banking
+# financial-promotion rules are ONE configured rule set among others, not the only frame.
+
+project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
+region: ${MKT_GOV_REGION:-asia-southeast1} # deployment region; must match the active market
+profile: ""                             # no default; MKT_GOV_PROFILE wins. gcp | local | platform | onprem
+vertical: ${MKT_VERTICAL:-banking}      # banking | online_retail
+market: ${MKT_MARKET:-SG}               # JP | AU | SG
+grounding_enabled: ${MKT_GROUNDING_ENABLED:-true}
+
+models:
+  reasoning: gemini-3.5-flash           # GA — finding narration (thinking=high)
+  triage: gemini-3.1-flash-lite         # GA — routing / triage / guardrail pre-checks
+  hard_reasoning: gemini-3.1-pro        # Preview — OFF unless use_hard_reasoning=true
+  use_hard_reasoning: false
+
+knowledge_base:
+  base_url_env: HRZ_KB_URL              # A2 Enterprise KB (D6's compliance rule store)
+  data_store_id: mkt-gov-rule-kb        # only used by the standalone GCP File Search adapter
+  location: asia-southeast1
+  top_k: 10
+
+model_armor:
+  template_id: mkt-gov-guardrail
+  host: modelarmor.asia-southeast1.rep.googleapis.com
+
+logging:
+  log_name: marketing-compliance-gate-audit
+  bucket: marketing-compliance-gate-worm
+  retention_days: 2557                  # ~7 years; bucket is locked (irreversible) in prod
+
+agent_engine:
+  resource_name: ${MKT_GOV_AGENT_ENGINE:-}
+  display_name: marketing-compliance-gate
+
+# Local profile stores (SDK-free). Empty paths default under ~/.marketing_compliance_gate/;
+# tests use ":memory:" for ephemeral, deterministic SQLite. No Google Cloud here.
+local:
+  db_path: ${MKT_GOV_LOCAL_DB:-}            # SQLite FTS5 compliance rule-KB index
+  audit_path: ${MKT_GOV_LOCAL_AUDIT:-}      # append-only local audit (WORM stand-in)
+  seed_path: ${MKT_GOV_LOCAL_SEED:-}        # rule-set seed JSON ("" => bundled fictional seed)
+  evidence_path: ${MKT_GOV_LOCAL_EVIDENCE:-}  # SQLite substantiation-evidence store
+  consent_path: ${MKT_GOV_LOCAL_CONSENT:-}    # SQLite consent and preference store
+
+# Green-claim (anti-greenwashing) rule pack. Empty selects the reference pack shipped at
+# src/marketing_compliance_gate/rulepacks/green_claims.yaml. The forbidden wording, the required
+# disclosures and fields, the required evidence kinds and the evidence-age limits are all in
+# that file, per jurisdiction: an adopter tightens its own green-claim policy by pointing
+# this at its own pack, never by editing the coverage engine (practice B4).
+green_claims:
+  pack_path: ${MKT_GOV_GREEN_PACK:-}
+
+# Per-market residency regions and locales (config + seed, NEVER hard-coded in a branch).
+# JP -> Tokyo, AU -> Sydney, SG -> Singapore; the region is selectable at deploy and
+# validated by config.market_profile().
+markets:
+  JP:
+    region: asia-northeast1
+    locales: [ja, en]
+    currency: JPY
+  AU:
+    region: australia-southeast1
+    locales: [en]
+    currency: AUD
+  SG:
+    region: asia-southeast1
+    locales: [en]
+    currency: SGD
+
+# ----------------------------------------------------------------------------- #
+# Port -> adapter bindings. The container picks the entry for the active profile,
+# falling back to the 'gcp' entry. These dotted paths are the build contract:
+# each adapter class takes a single Settings argument.
+# ----------------------------------------------------------------------------- #
+adapters:
+  # End-user identity (authentication). local = seeded dev personas, NO IdP/AD/LDAP, so
+  # demos and tests run offline; gcp/platform = verify the IAP-injected signed assertion
+  # (auth configured ON the GCP service); onprem = client IdP placeholder. The resolved
+  # Principal supplies the audit actor, replacing any client-asserted actor/ACL.
+  identity:
+    gcp: marketing_compliance_gate.adapters.gcp.iap_identity:IapIdentityAdapter
+    platform: marketing_compliance_gate.adapters.gcp.iap_identity:IapIdentityAdapter
+    local: marketing_compliance_gate.adapters.local.identity:LocalPersonaIdentityAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.identity:OnPremIdentityAdapter
+  rule_provider:
+    gcp: marketing_compliance_gate.adapters.gcp.file_search_rules:FileSearchRuleProviderAdapter
+    platform: marketing_compliance_gate.adapters.platform.remote_rules:RemoteRuleProviderAdapter
+    local: marketing_compliance_gate.adapters.local.rules:LocalRuleProviderAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.rules:OnPremRuleProviderAdapter
+  # Tenant-scoped green-claim substantiation evidence. list_for_asset filters on the tenant
+  # IN THE STORE; get() is a raw fetch by id and the DOMAIN service authorizes it against the
+  # verified principal's tenant (403, never 404-by-accident). See ports/evidence.py.
+  evidence_store:
+    gcp: marketing_compliance_gate.adapters.gcp.firestore_evidence:FirestoreEvidenceStoreAdapter
+    platform: marketing_compliance_gate.adapters.gcp.firestore_evidence:FirestoreEvidenceStoreAdapter
+    local: marketing_compliance_gate.adapters.local.evidence:LocalEvidenceStoreAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.evidence:OnPremEvidenceStoreAdapter
+  # The consent and preference store: a data subject's consent records, channel preferences,
+  # frequency caps, suppression entries and recorded sends. The adapter family MIRRORS the
+  # evidence store above, deliberately: same tenant posture (snapshot filters IN the store;
+  # get_record is raw and the DOMAIN authorizes against the verified principal), same
+  # residency validation on GCP, same fail-fast on-prem placeholder. See ports/consent.py.
+  consent_store:
+    gcp: marketing_compliance_gate.adapters.gcp.firestore_consent:FirestoreConsentStoreAdapter
+    platform: marketing_compliance_gate.adapters.gcp.firestore_consent:FirestoreConsentStoreAdapter
+    local: marketing_compliance_gate.adapters.local.consent:LocalConsentStoreAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.consent:OnPremConsentStoreAdapter
+  llm:
+    gcp: marketing_compliance_gate.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    platform: marketing_compliance_gate.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    local: marketing_compliance_gate.adapters.local.llm:LocalDeterministicLLMAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.llm:OnPremLLMAdapter
+  guardrail:
+    gcp: marketing_compliance_gate.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter
+    platform: marketing_compliance_gate.adapters.platform.remote_guardrail:RemoteGuardrailAdapter
+    local: marketing_compliance_gate.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.guardrail:OnPremGuardrailAdapter
+  audit:
+    gcp: marketing_compliance_gate.adapters.gcp.cloud_logging_audit:CloudLoggingAuditAdapter
+    platform: marketing_compliance_gate.adapters.platform.remote_audit:RemoteAuditAdapter
+    local: marketing_compliance_gate.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.audit:OnPremAuditAdapter
+  tracer:
+    gcp: marketing_compliance_gate.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    platform: marketing_compliance_gate.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    local: marketing_compliance_gate.adapters.local.tracer:LocalNoopTracerAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.tracer:OnPremTracerAdapter
+  evaluation:
+    gcp: marketing_compliance_gate.adapters.gcp.genai_eval:GenAiEvalAdapter
+    platform: marketing_compliance_gate.adapters.platform.remote_evaluation:RemoteEvaluationAdapter
+    local: marketing_compliance_gate.adapters.local.evaluation:LocalOfflineEvalAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.evaluation:OnPremEvalAdapter
+  agent_registry:
+    gcp: marketing_compliance_gate.adapters.gcp.a2a_registry:A2ARegistryAdapter
+    platform: marketing_compliance_gate.adapters.platform.remote_registry:RemoteRegistryAdapter
+    local: marketing_compliance_gate.adapters.local.registry_agent:LocalAgentRegistryAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.registry_agent:OnPremAgentRegistryAdapter
+  tool_catalog:
+    gcp: marketing_compliance_gate.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    platform: marketing_compliance_gate.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    local: marketing_compliance_gate.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    onprem: marketing_compliance_gate.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
+  # Rule R8: a non-compliant review (requires_human_review=True) is routed to the Hrz7
+  # Human-Review & Maker-Checker Console via the shared review-kit, not left as a
+  # per-repo boolean. Wired ONLY on the review/maker producer path; the agent never approves.
+  review_router:
+    gcp: marketing_compliance_gate.adapters.platform.review_router:PlatformReviewRouter
+    platform: marketing_compliance_gate.adapters.platform.review_router:PlatformReviewRouter
+    local: marketing_compliance_gate.adapters.local.review_router:LocalReviewRouter
+    onprem: marketing_compliance_gate.adapters.onprem.review_router:OnPremReviewRouter

@@ -1,0 +1,45 @@
+# terraform.tfvars.example — concrete sample values for an APAC-resident Mkt6 deploy.
+#
+# Copy to terraform.tfvars and fill in your own ids. Do NOT commit terraform.tfvars.
+# Region defaults to Singapore (asia-southeast1); set asia-northeast1 (JP) or
+# australia-southeast1 (AU) only if that is the deploy market.
+
+project_id = "acme-mkt-governance-sg-prod"
+
+# Residency — already the secure default; shown for clarity. SG/JP/AU only.
+region        = "asia-southeast1"
+deploy_market = "SG"
+
+# ~7-year WORM retention for the audit log. Bucket lock is irreversible.
+retention_days = 2557
+
+# Org / Access Context Manager. access_policy_id is the numeric policy id.
+org_id           = "123456789012"
+access_policy_id = "987654321098"
+
+# Cloud Run image (Artifact Registry, in the residency region).
+container_image = "asia-southeast1-docker.pkg.dev/acme-mkt-governance-sg-prod/mkt/marketing-compliance-gate@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+# Managed Mkt5 -> Mkt6 consent hop. The same audience is passed to Mkt5 as its
+# consent_store_audience; only this exact Mkt5 Workload Identity may invoke the service.
+s2s_audience               = "https://mkt6-consent.internal.example"
+mkt5_caller_service_account = "mkt-nba-run@acme-nba-sg-prod.iam.gserviceaccount.com"
+
+# Existing Shared VPC owned by the network platform. Both service projects must already be
+# associated with this host. The subnet must be /26 or larger and enable Private Google Access.
+shared_vpc_network    = "projects/acme-network-sg-prod/global/networks/mkt-prod"
+shared_vpc_subnetwork = "projects/acme-network-sg-prod/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+
+# One regular sovereignty perimeter contains the Shared VPC host and BOTH service projects.
+# Mkt6 is the sole owner in the reference topology; Mkt5 sets manage... = false. Project
+# NUMBERS are not project ids. Start in DRY-RUN and promote only after reviewing denials.
+enable_vpc_sc                   = true
+manage_shared_vpc_sc_perimeter = true
+shared_vpc_sc_perimeter_name   = "mkt_marketing_sg"
+shared_vpc_host_project_number = "333333333333"
+mkt5_project_number            = "111111111111"
+mkt6_project_number            = "222222222222"
+vpc_sc_enforce                 = false
+
+# Wire a real Monitoring notification channel before relying on the posture alerts.
+alert_notification_channels = []

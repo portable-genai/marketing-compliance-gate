@@ -1,0 +1,110 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marketing-compliance-gate"
+version = "0.0.1"
+description = "D6 Marketing Compliance and Brand Governance — a deterministic rule engine that reviews Campaigns, Creatives and Offers for claim, permission, brand and consent compliance against per-market, per-vertical advertising and consumer-protection rules, the marketing maker-checker gate, generic across banking and online retail and the JP/AU/SG markets, built ports-and-adapters on the Gemini Enterprise Agent Platform."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ashish Awasthi" }]
+keywords = ["marketing-compliance", "brand-governance", "advertising-rules", "consent", "maker-checker", "gemini", "adk", "gcp", "marketing", "apac"]
+
+# Core deps are framework-light so the domain + on-prem/test (local) profile install
+# without any Google Cloud SDK. The managed-service adapters live in the [gcp] extra.
+dependencies = [
+  # Shared commons, pinned by tag; no build-time coupling. Public repos, so CI
+  # installs them with zero credentials. hex-service-kit: outbound S2S, fail-closed net defaults,
+  # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the Hrz4
+  # promotion-gate client the platform eval adapter uses. review-kit: the rule R8
+  # producer client that routes an escalated review to the Hrz7 maker-checker console.
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.1",
+  "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
+  "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.1",
+  # Shared APAC national-identifier rows and the two-part, pack-independent leak scorer.
+  "pii-kit @ git+https://github.com/portable-genai/pii-kit@v0.0.1",
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "httpx>=0.27",
+  "tenacity>=8.3",
+  "typer>=0.12",
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.30",
+  "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+# Pinned per mid-2026 research. ADK 2.0 was a breaking release => pin exactly.
+gcp = [
+  "google-adk==2.3.0",
+  "google-genai>=1.21",
+  "google-cloud-aiplatform[agent_engines,adk,evaluation]>=1.158.0",
+  "google-cloud-discoveryengine>=0.13",
+  # Backs the EvidenceStorePort gcp adapter (tenant-scoped green-claim substantiation
+  # evidence, in the market's residency region). Same floor as the other catalog repos
+  # that store documents in Firestore, so the fleet resolves to one version.
+  "google-cloud-firestore>=2.16",
+  "google-cloud-logging>=3.11",
+  "opentelemetry-sdk>=1.27",
+  "opentelemetry-exporter-gcp-trace>=1.7",
+  "a2a-sdk>=0.2",
+  "mcp>=1.2",
+]
+# Demo tooling is a PINNED, opt-in extra (F2): the headless-browser walkthrough of the served
+# demo needs it, while the day-one offline gate (D3) must stay installable and green without
+# downloading a browser binary.
+demo = [
+  "playwright==1.62.0",
+]
+dev = [
+  "pytest>=8.2",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=5.0",
+  # Pinned exactly: ruff's formatter output changes between releases, so an unpinned
+  # version drifts from CI and fails `ruff format --check`. Bump deliberately.
+  "ruff==0.15.18",
+  "mypy>=1.10",
+  "types-PyYAML",
+  "respx>=0.21",
+]
+
+[project.scripts]
+mkt-gov = "marketing_compliance_gate.cli.main:app"
+
+# Required for the commons git+https pins (direct references).
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/marketing_compliance_gate"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+# .agents/skills is a synced copy of the catalog's shared build skills, not this repo's
+# source: it is linted where it is authored, and a local reformat here would silently
+# diverge every repo's copy from the canonical one.
+extend-exclude = [".agents/skills"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Presentation/demo scripts embed long HTML/CSS string literals; line length there
+# hurts more than it helps. The shipped package (src) and tests stay strict.
+"scripts/*" = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+  "integration: requires live Google Cloud credentials (deselect with -m 'not integration')",
+]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+ignore_missing_imports = true

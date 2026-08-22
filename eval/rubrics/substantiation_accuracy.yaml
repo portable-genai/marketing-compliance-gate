@@ -1,0 +1,19 @@
+# A4 model-risk rubric — green-claim substantiation accuracy (Mkt6).
+#
+# The gate decides whether an environmental claim may be published. Scoring it against the
+# product's own verdict would be circular, so this metric compares the verdict to the golden
+# set's `expected_verdict`, which is written from the evidence in each row: expired offset
+# records, self-declared certificates where the jurisdiction demands independent verification,
+# and evidence filed under another category are all expected to come back short.
+#
+# The threshold is set with the strict metrics (0.99, alongside citation_accuracy and
+# review_safety) rather than with the softer ones, because the failure this catches is a
+# greenwashing claim published on the agent's say-so. An overclaim (the product answering
+# `substantiated` where the golden set says otherwise) is the exact regression this must
+# make red, and `agent_eval_kit.assert_each_can_go_red` proves it does before the gate scores
+# anything.
+metric: substantiation_accuracy
+description: >-
+  Fraction of golden green-claim assets whose substantiation verdict matches the independent
+  golden verdict.
+threshold: 0.99

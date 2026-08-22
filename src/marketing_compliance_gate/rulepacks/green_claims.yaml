@@ -1,0 +1,453 @@
+# Mkt6 green-claim rule pack (jurisdiction-parameterised CONFIG, never engine code).
+#
+# This file is the reference pack. It carries, per jurisdiction (JP / AU / SG):
+#
+#   * `categories`   the detection vocabulary that classifies marketing copy into a
+#                    GreenClaimCategory (pure phrase matching, never an LLM),
+#   * `requirements` what evidence each category needs before the claim may run, and
+#   * `rules`        the GREEN_CLAIM-kind rules (forbidden phrase / required disclosure /
+#                    required field), each naming the regulator instrument it comes from.
+#
+# Two kinds of number live here, and they are different things:
+#
+#   * The INSTRUMENTS in `citations` are real, named regulator publications. Nothing in
+#     this repo is legal advice, and no rule text is a verbatim quotation; each snippet is
+#     a short paraphrase so a reviewer can find the source. `url` is deliberately blank:
+#     adopters point these at their own subscription or regulator links.
+#   * The THRESHOLDS in `requirements` (which evidence kinds, the maximum evidence age, and
+#     whether independent verification is demanded) are ADOPTER-OWNED POLICY, not quoted
+#     regulatory limits. They are config with the shipped defaults equal to this reference
+#     (practice B4), so a bank tightens its own green-claim policy by editing this file (or
+#     pointing `green_claims.pack_path` at its own), never by editing the coverage engine.
+#
+# Assets, evidence and demo data elsewhere in the repo are obviously fictional; the
+# instrument names below are the one place real-world names are used, because a citation
+# that cannot be named is worthless to a compliance officer.
+
+version: "2026-08-05"
+
+# --------------------------------------------------------------------------- #
+# Regulator instruments cited by the rules and requirements below.
+# --------------------------------------------------------------------------- #
+citations:
+  au_accc_env_claims:
+    title: "ACCC, Making environmental claims: A guide for business (December 2023)"
+    source_type: guideline
+    published_date: "2023-12-12"
+    snippet: >-
+      Australian Competition and Consumer Commission guidance on environmental and
+      sustainability claims: claims must be truthful, must be substantiated by evidence
+      held before the claim is made, must avoid broad or unqualified language, and must
+      explain any conditions, including reliance on carbon offsets.
+  au_acl_misleading:
+    title: >-
+      Competition and Consumer Act 2010 (Cth) Schedule 2 (Australian Consumer Law),
+      sections 18 and 29(1)(a)
+    source_type: regulation
+    published_date: "2010-07-01"
+    snippet: >-
+      Prohibits misleading or deceptive conduct in trade or commerce and false or
+      misleading representations about the standard, quality or composition of goods and
+      services, which is the statutory basis for greenwashing enforcement in Australia.
+  au_asic_info271:
+    title: >-
+      ASIC Information Sheet 271, How to avoid greenwashing when offering or promoting
+      sustainability-related products
+    source_type: guideline
+    published_date: "2022-06-14"
+    snippet: >-
+      Australian Securities and Investments Commission guidance for financial products:
+      a fund's sustainability label must match its actual investment strategy and
+      screening criteria, and the basis for any sustainability claim must be disclosed.
+  sg_mas_cfc_02_2022:
+    title: >-
+      MAS Circular No. CFC 02/2022, Disclosure and Reporting Guidelines for Retail ESG
+      Funds
+    source_type: guideline
+    published_date: "2022-07-28"
+    snippet: >-
+      Monetary Authority of Singapore guidelines for retail funds marketed with an ESG
+      focus: the fund's ESG focus, investment strategy and selection criteria must be
+      disclosed, and a fund whose name signals sustainability must invest accordingly.
+  sg_scap:
+    title: "Singapore Code of Advertising Practice (Advertising Standards Authority of Singapore)"
+    source_type: guideline
+    published_date: "2008-01-01"
+    snippet: >-
+      The national advertising code: advertisers must hold documentary evidence for
+      objective claims before publication, and environmental claims must be clear about
+      what part of the product or process they cover.
+  sg_cpfta:
+    title: "Consumer Protection (Fair Trading) Act 2003 (Singapore)"
+    source_type: regulation
+    published_date: "2004-03-01"
+    snippet: >-
+      Prohibits unfair practices in consumer transactions, including representing that
+      goods or services have benefits or qualities they do not have, which covers
+      unsupported environmental benefit claims.
+  jp_premiums_act:
+    title: >-
+      Act against Unjustifiable Premiums and Misleading Representations
+      (Act No. 134 of 1962), Articles 5 and 7
+    source_type: regulation
+    published_date: "1962-05-15"
+    snippet: >-
+      Japan's Premiums and Representations Act prohibits representations that mislead
+      consumers about quality or advantage, and empowers the Consumer Affairs Agency to
+      require the advertiser to produce materials substantiating a representation.
+  jp_caa_environmental_labelling:
+    title: >-
+      Consumer Affairs Agency, Views on Environmental Labelling under the Act against
+      Unjustifiable Premiums and Misleading Representations
+    source_type: guideline
+    published_date: "2013-04-01"
+    snippet: >-
+      Consumer Affairs Agency guidance on environmental representations: the scope of an
+      environmental claim must be clear, and vague or absolute environmental benefit
+      wording without a stated basis risks being a misleading representation.
+  jp_fsa_esg_fund_guidelines:
+    title: >-
+      Financial Services Agency, Supervisory Guidelines for Investment Trusts and
+      Investment Corporations, provisions on publicly offered ESG funds (March 2023)
+    source_type: guideline
+    published_date: "2023-03-31"
+    snippet: >-
+      Japanese Financial Services Agency supervisory expectations for funds marketed as
+      ESG: the name and marketing of the fund must be consistent with its stated ESG
+      investment strategy, and the strategy must be disclosed.
+  iso_14021:
+    title: >-
+      ISO 14021:2016, Environmental labels and declarations, self-declared environmental
+      claims (Type II environmental labelling)
+    source_type: guideline
+    published_date: "2016-03-15"
+    snippet: >-
+      International standard for self-declared environmental claims: claims must be
+      accurate, verifiable and specific, and vague claims such as environmentally friendly
+      are not to be used without qualification.
+
+# --------------------------------------------------------------------------- #
+# Detection vocabulary. `base` applies in every jurisdiction; a jurisdiction may add
+# locale-specific phrasing (JP adds Japanese). Matching is case-insensitive substring.
+# --------------------------------------------------------------------------- #
+categories:
+  carbon_neutral:
+    - "carbon neutral"
+    - "carbon-neutral"
+    - "climate neutral"
+    - "zero carbon"
+  net_zero:
+    - "net zero"
+    - "net-zero"
+  recyclable:
+    - "100% recyclable"
+    - "fully recyclable"
+    - "recyclable packaging"
+  biodegradable:
+    - "biodegradable"
+    - "compostable"
+  renewable_energy:
+    - "100% renewable"
+    - "powered by renewable energy"
+    - "green electricity"
+  sustainable_sourcing:
+    - "sustainably sourced"
+    - "responsibly sourced"
+    - "deforestation free"
+  esg_fund_label:
+    - "esg fund"
+    - "sustainable fund"
+    - "green fund"
+    - "sustainability-focused portfolio"
+  green_finance_proceeds:
+    - "green loan"
+    - "green bond"
+    - "green deposit"
+    - "sustainability-linked loan"
+
+# --------------------------------------------------------------------------- #
+# The reference substantiation policy. ADOPTER-OWNED numbers (B4): defaults here, tuned
+# per jurisdiction below. `max_evidence_age_days: 0` means the evidence does not age out.
+# --------------------------------------------------------------------------- #
+requirement_defaults: &requirement_defaults
+  carbon_neutral:
+    required_evidence: [emissions_inventory, carbon_offset_retirement, third_party_certification]
+    max_evidence_age_days: 365
+    requires_independent_verification: true
+    remediation: >-
+      Hold a current emissions inventory, the offset retirement record and an independent
+      certification for the claimed boundary, or qualify the claim.
+  net_zero:
+    required_evidence: [emissions_inventory, transition_plan, third_party_certification]
+    max_evidence_age_days: 365
+    requires_independent_verification: true
+    remediation: >-
+      Publish the transition plan and hold an independently assured emissions inventory
+      before making a net-zero claim.
+  recyclable:
+    required_evidence: [accredited_test_report, lifecycle_assessment]
+    max_evidence_age_days: 1095
+    requires_independent_verification: false
+    remediation: >-
+      Hold an accredited recyclability test report and the lifecycle assessment for the
+      packaging actually shipped, and state which components are recyclable.
+  biodegradable:
+    required_evidence: [accredited_test_report]
+    max_evidence_age_days: 1095
+    requires_independent_verification: true
+    remediation: >-
+      Hold an accredited biodegradability test report stating the conditions and timeframe
+      under which the product degrades.
+  renewable_energy:
+    required_evidence: [renewable_energy_attribute, third_party_certification]
+    max_evidence_age_days: 365
+    requires_independent_verification: false
+    remediation: >-
+      Hold the retired renewable-energy attribute certificates covering the claimed
+      consumption period.
+  sustainable_sourcing:
+    required_evidence: [third_party_certification, supplier_attestation]
+    max_evidence_age_days: 730
+    requires_independent_verification: false
+    remediation: >-
+      Hold the chain-of-custody certification and current supplier attestations for the
+      sourced volume.
+  esg_fund_label:
+    required_evidence: [fund_esg_disclosure]
+    max_evidence_age_days: 365
+    requires_independent_verification: false
+    remediation: >-
+      Publish the fund's ESG focus, investment strategy and selection criteria before
+      marketing it with a sustainability label.
+  green_finance_proceeds:
+    required_evidence: [use_of_proceeds_report, third_party_certification]
+    max_evidence_age_days: 365
+    requires_independent_verification: true
+    remediation: >-
+      Hold the externally reviewed use-of-proceeds report for the facility before
+      marketing it as green.
+
+# --------------------------------------------------------------------------- #
+# Per-jurisdiction packs.
+# --------------------------------------------------------------------------- #
+jurisdictions:
+  AU:
+    categories: {}
+    requirements:
+      <<: *requirement_defaults
+    rules:
+      - id: AU-GREEN-UNQUALIFIED-BENEFIT
+        check: forbidden_phrase
+        severity: high
+        verticals: [banking, online_retail]
+        description: >-
+          Broad, unqualified environmental benefit wording is prohibited: an environmental
+          claim must say what part of the product or process it covers.
+        patterns:
+          - "environmentally friendly"
+          - "eco-friendly"
+          - "100% sustainable"
+          - "completely green"
+          - "planet positive"
+        remediation: >-
+          Replace the broad claim with a specific, qualified statement of the actual
+          environmental benefit and its boundary.
+        citation: au_accc_env_claims
+      - id: AU-GREEN-ABSOLUTE-MISREPRESENTATION
+        check: forbidden_phrase
+        severity: critical
+        verticals: [banking, online_retail]
+        description: >-
+          Absolute environmental representations that cannot be true as stated are
+          misleading conduct under the Australian Consumer Law.
+        patterns:
+          - "zero environmental impact"
+          - "no impact on the environment"
+          - "guaranteed carbon free"
+        remediation: >-
+          Remove the absolute representation; state the measured impact and its basis.
+        citation: au_acl_misleading
+      - id: AU-GREEN-OFFSET-BASIS-DISCLOSURE
+        check: required_disclosure
+        severity: high
+        verticals: [banking, online_retail]
+        applies_to: [carbon_neutral, net_zero]
+        description: >-
+          A carbon-neutral or net-zero claim must disclose whether it relies on carbon
+          offsets, because reliance on offsets is a condition of the claim.
+        patterns: ["offset"]
+        remediation: >-
+          State in the creative whether the claim is achieved through emissions reduction,
+          purchased offsets, or both.
+        citation: au_accc_env_claims
+      - id: AU-GREEN-SUBSTANTIATION-ON-FILE
+        check: required_field
+        severity: high
+        verticals: [banking, online_retail]
+        applies_to:
+          [carbon_neutral, net_zero, recyclable, biodegradable, renewable_energy,
+           sustainable_sourcing, esg_fund_label, green_finance_proceeds]
+        field: substantiation_ref
+        description: >-
+          Evidence for an environmental claim must be held BEFORE the claim is published;
+          the asset must name the substantiation record.
+        remediation: >-
+          Attach the substantiation_ref of the evidence pack held for this claim.
+        citation: au_accc_env_claims
+      - id: AU-GREEN-FUND-LABEL-STRATEGY
+        check: required_field
+        severity: high
+        verticals: [banking]
+        applies_to: [esg_fund_label, green_finance_proceeds]
+        field: esg_strategy_disclosure
+        description: >-
+          A sustainability-labelled financial product must disclose the investment
+          strategy and screening criteria that justify the label.
+        remediation: >-
+          Set esg_strategy_disclosure to the published strategy document reference.
+        citation: au_asic_info271
+
+  SG:
+    categories: {}
+    requirements:
+      <<: *requirement_defaults
+      esg_fund_label:
+        required_evidence: [fund_esg_disclosure, third_party_certification]
+        max_evidence_age_days: 365
+        requires_independent_verification: false
+        remediation: >-
+          Publish the retail ESG fund's ESG focus, investment strategy and selection
+          criteria, and hold the fund's independent ESG assessment.
+    rules:
+      - id: SG-GREEN-UNQUALIFIED-BENEFIT
+        check: forbidden_phrase
+        severity: high
+        verticals: [banking, online_retail]
+        description: >-
+          Vague environmental claims must not be used without qualification; the claim
+          must be specific and verifiable.
+        patterns:
+          - "environmentally friendly"
+          - "eco-friendly"
+          - "100% green"
+          - "totally sustainable"
+        remediation: >-
+          Qualify the claim: say which attribute of the product or service is improved and
+          against what baseline.
+        citation: iso_14021
+      - id: SG-GREEN-UNFAIR-PRACTICE
+        check: forbidden_phrase
+        severity: critical
+        verticals: [banking, online_retail]
+        description: >-
+          Representing an environmental benefit the product does not have is an unfair
+          practice in a consumer transaction.
+        patterns:
+          - "zero environmental impact"
+          - "guaranteed carbon free"
+        remediation: >-
+          Remove the representation or substantiate the specific benefit claimed.
+        citation: sg_cpfta
+      - id: SG-GREEN-SUBSTANTIATION-ON-FILE
+        check: required_field
+        severity: high
+        verticals: [banking, online_retail]
+        applies_to:
+          [carbon_neutral, net_zero, recyclable, biodegradable, renewable_energy,
+           sustainable_sourcing, esg_fund_label, green_finance_proceeds]
+        field: substantiation_ref
+        description: >-
+          Documentary evidence for an objective environmental claim must be held before
+          publication; the asset must name the substantiation record.
+        remediation: >-
+          Attach the substantiation_ref of the documentary evidence held for this claim.
+        citation: sg_scap
+      - id: SG-GREEN-OFFSET-BASIS-DISCLOSURE
+        check: required_disclosure
+        severity: medium
+        verticals: [banking, online_retail]
+        applies_to: [carbon_neutral, net_zero]
+        description: >-
+          A carbon claim must make its qualification clear, including any reliance on
+          purchased offsets.
+        patterns: ["offset"]
+        remediation: >-
+          State whether the carbon claim relies on purchased offsets and over what period.
+        citation: sg_scap
+      - id: SG-GREEN-RETAIL-ESG-FUND-DISCLOSURE
+        check: required_field
+        severity: high
+        verticals: [banking]
+        applies_to: [esg_fund_label]
+        field: esg_fund_disclosure
+        description: >-
+          A retail fund marketed with an ESG focus must disclose that focus, its
+          investment strategy and its selection criteria.
+        remediation: >-
+          Set esg_fund_disclosure to the prospectus section carrying the fund's ESG focus,
+          strategy and criteria.
+        citation: sg_mas_cfc_02_2022
+
+  JP:
+    categories:
+      carbon_neutral:
+        - "カーボンニュートラル"
+      renewable_energy:
+        - "再生可能エネルギー100%"
+      esg_fund_label:
+        - "esgファンド"
+    requirements:
+      <<: *requirement_defaults
+    rules:
+      - id: JP-GREEN-VAGUE-BENEFIT
+        check: forbidden_phrase
+        severity: high
+        verticals: [banking, online_retail]
+        description: >-
+          Vague environmental benefit wording without a stated basis risks being a
+          misleading representation about quality or advantage.
+        patterns:
+          - "environmentally friendly"
+          - "地球にやさしい"
+          - "完全エコ"
+          - "100% eco"
+        remediation: >-
+          State the specific environmental attribute, its boundary and the basis for it.
+        citation: jp_caa_environmental_labelling
+      - id: JP-GREEN-SUBSTANTIATION-ON-FILE
+        check: required_field
+        severity: critical
+        verticals: [banking, online_retail]
+        applies_to:
+          [carbon_neutral, net_zero, recyclable, biodegradable, renewable_energy,
+           sustainable_sourcing, esg_fund_label, green_finance_proceeds]
+        field: substantiation_ref
+        description: >-
+          The advertiser must be able to produce materials substantiating an environmental
+          representation on request, so the substantiation record must be named on the asset.
+        remediation: >-
+          Attach the substantiation_ref of the materials that would be produced on request.
+        citation: jp_premiums_act
+      - id: JP-GREEN-SCOPE-DISCLOSURE
+        check: required_disclosure
+        severity: medium
+        verticals: [banking, online_retail]
+        applies_to: [carbon_neutral, net_zero]
+        description: >-
+          The scope of a carbon claim must be clear on the face of the representation.
+        patterns: ["scope"]
+        remediation: >-
+          State the emissions scope the claim covers, and any offsets relied on.
+        citation: jp_caa_environmental_labelling
+      - id: JP-GREEN-ESG-FUND-STRATEGY
+        check: required_field
+        severity: high
+        verticals: [banking]
+        applies_to: [esg_fund_label]
+        field: esg_strategy_disclosure
+        description: >-
+          A publicly offered fund marketed as ESG must have marketing consistent with its
+          disclosed ESG investment strategy.
+        remediation: >-
+          Set esg_strategy_disclosure to the disclosed ESG investment strategy reference.
+        citation: jp_fsa_esg_fund_guidelines
