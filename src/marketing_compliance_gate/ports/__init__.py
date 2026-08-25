@@ -13,7 +13,7 @@ from .consent import ConsentStorePort
 from .evidence import EvidenceStorePort
 from .generation import LlmPort
 from .governance import AgentRegistryPort, ToolCatalogPort
-from .identity import IdentityPort
+from .identity import EndUserAuthUnavailableError, IdentityPort
 from .observability import (
     AuditSinkPort,
     EvaluationGatePort,
@@ -37,5 +37,6 @@ __all__ = [
     "AgentRegistryPort",
     "ToolCatalogPort",
     "IdentityPort",
+    "EndUserAuthUnavailableError",
     "ReviewRouterPort",
 ]
