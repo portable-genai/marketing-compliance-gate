@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from hex_service_kit.assertion import require_claims, require_pinned_algorithm
+from hex_service_kit.federation import IAP_ASSERTION_HEADER, IAP_ISSUER, IAP_KEYS_URL
 from hex_service_kit.identity import IdentityError as AssertionRefused
 
 from ...config import Settings
@@ -22,13 +23,17 @@ from ...domain.identity import IdentityError, Principal, RequestContext
 from ...envread import read_env_setting
 from ...ports.identity import VERIFIED
 
-_ASSERTION_HEADER = "x-goog-iap-jwt-assertion"
-_IAP_KEYS_URL = "https://www.gstatic.com/iap/verify/public_key"
-
-#: The issuer every IAP assertion carries. ``verify_token`` does not check the issuer at all
-#: (``verify_oauth2_token`` is the wrapper that does), so this adapter checks it itself. The
-#: docstring above claimed the issuer was verified long before anything verified it.
-_IAP_ISSUER = "https://cloud.google.com/iap"
+# This repository's names for the kit's transport facts. They are REBOUND, not re-declared:
+# the header name, the issuer and the key-set URL are the same three strings in every
+# repository that verifies an IAP assertion, and while each kept its own copy the population
+# could drift without anything noticing. Rebinding makes a divergence between this adapter and
+# the reviewed set impossible rather than merely unlikely.
+#
+#: ``verify_token`` does not check the issuer at all (``verify_oauth2_token`` is the wrapper
+#: that does), so this adapter checks it itself against the kit's value.
+_ASSERTION_HEADER = IAP_ASSERTION_HEADER
+_IAP_KEYS_URL = IAP_KEYS_URL
+_IAP_ISSUER = IAP_ISSUER
 
 #: The claims this deployment requires before it reads any of them. ``email`` is here because it
 #: is the subject the audit record attributes to; the previous ``email or sub`` reader accepted
@@ -48,7 +53,16 @@ class IapIdentityAdapter:
         # Expected audience: the IAP-protected resource. For an HTTPS LB + IAP it is
         # "/projects/<NUM>/global/backendServices/<ID>"; for App Engine/Cloud Run IAP it is
         # "/projects/<NUM>/apps/<ID>". Configure via MKT_GOV_IAP_AUDIENCE; required in secure mode.
-        self._audience = read_env_setting("MKT_GOV_IAP_AUDIENCE").value
+        #
+        # Read as THREE states, not two. Reading ``.value`` alone collapses unset and
+        # set-and-empty onto the same empty string. Both states refuse identically and always
+        # did, so nothing here widens or narrows what is accepted; what was lost was the
+        # ability to tell an operator which mistake they made, and an operator told 'not
+        # configured' about a variable that was present and blank goes looking for the wrong
+        # thing.
+        _audience_setting = read_env_setting("MKT_GOV_IAP_AUDIENCE")
+        self._audience = _audience_setting.value
+        self._audience_configured_empty = _audience_setting.is_configured_empty
 
     def resolve(self, ctx: RequestContext) -> Principal:
         # The policy is checked BEFORE the credential is even read. An unset audience makes
@@ -57,7 +71,11 @@ class IapIdentityAdapter:
         # is documented to SKIP the ``aud`` check and would authenticate any IAP-signed token.
         if not self._audience:
             raise IdentityError(
-                "MKT_GOV_IAP_AUDIENCE is not configured; cannot verify IAP assertion"
+                "MKT_GOV_IAP_AUDIENCE is set to an empty value, which names nothing; cannot "
+                "verify IAP assertion. Unset it to leave the setting absent, or give it "
+                "the IAP-protected resource."
+                if self._audience_configured_empty
+                else "MKT_GOV_IAP_AUDIENCE is not configured; cannot verify IAP assertion"
             )
         assertion = ctx.header(_ASSERTION_HEADER)
         if not assertion:
