@@ -81,14 +81,16 @@ jobs:
 
       - name: Served demo UI in a real headless Chromium (a SKIP fails this job)
         # tests/browser/test_served_demo_ui.py skips LOUDLY when the extra or the browser is
-        # absent, so a fork's day-one offline gate still passes without either. In CI both are
-        # installed one step above, so no honest reason to skip is left, and a skip would mean
-        # the evidence quietly stopped running -- which is exactly how this suite reported green
-        # for as long as it has existed, without ever loading a page. `-rs` prints the reason;
-        # the grep is the part that turns it into a failure.
+        # absent, so a fork's day-one offline gate still passes without either. Both are
+        # installed one step above, so no honest reason to skip is left HERE, and
+        # DEMO_BROWSER_REQUIRED says exactly that to the suite itself: with it set, an absent
+        # extra or a failed launch FAILS rather than skipping, so the evidence can no longer
+        # stop running behind a green tick -- which is how this suite reported green for as
+        # long as it existed, without ever loading a page. The grep stays as the outer belt
+        # because it also catches "no tests ran".
         run: |
           set -o pipefail
-          MKT_GOV_PROFILE=local python -m pytest tests/browser -q -rs | tee browser-evidence.log
+          DEMO_BROWSER_REQUIRED=1 MKT_GOV_PROFILE=local python -m pytest tests/browser -q -rs | tee browser-evidence.log
           if grep -qE 'skipped|no tests ran' browser-evidence.log; then
             echo "the served-browser evidence did not run; it proves nothing" >&2
             exit 1

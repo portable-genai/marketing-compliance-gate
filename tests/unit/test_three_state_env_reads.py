@@ -74,9 +74,11 @@ SCANNED_ROOTS: tuple[str, ...] = ("src", "scripts", "eval")
 #: not belong here and the read belongs in ``read_env_setting``.
 TWO_STATE_READS_WITH_A_REASON: dict[str, str] = {
     "CHROME_PATH": (
-        "scripts/demo_playwright.py: which local Chrome binary Playwright drives. It selects a "
-        "program on the presenter's own machine, names no host, origin or audience, and an "
-        "unusable value fails the launch loudly."
+        "scripts/demo_playwright.py and tests/browser/test_served_demo_ui.py: "
+        "which local Chrome binary Playwright drives. It selects a program on the runner's "
+        "own machine, names no host, origin or audience, and an unusable value fails the "
+        "launch loudly. Only the first of those two sites is in this scan's scope, because "
+        "tests/ is not scanned; the classification covers both reads."
     ),
     "DEMO_URL": (
         "scripts/demo_playwright.py: which already-running demo server the browser walkthrough "
