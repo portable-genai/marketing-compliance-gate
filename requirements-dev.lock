@@ -16,7 +16,7 @@
 # of those is a lockfile that looks pinned and does not install.
 #
 # tag -> commit, and `tests/unit/test_repo_artifacts.py` proves each line against the tag
-# `pyproject.toml` names and against the other lockfile:
+# `pyproject.toml` names and against every other lockfile:
 #   hex-service-kit  v0.0.1 = 4cdf92a32e364d6d2f638823ee2f7d0f8f8da731
 #   agent-eval-kit   v0.0.1 = a79f0afd125ba81c0fec001f9617f9473d6d7ec1
 #   review-kit       v0.0.1 = 47c05c64fa115d9aa07c0f349be5ec5d807bbe95

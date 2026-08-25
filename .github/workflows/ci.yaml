@@ -69,6 +69,31 @@ jobs:
       - name: Presenter demo self-test (all live steps)
         run: python scripts/demo_selftest.py
 
+      # F2, the half that had never run. Playwright is pinned in the [demo] extra and compiled
+      # into requirements-demo.lock; the browser BINARY is a network download, which is why the
+      # offline gate must not depend on it and why it is fetched HERE instead. The demo lock is
+      # compiled from the same pyproject.toml as the dev lock installed above, so installing it
+      # on top cannot pull a commons backwards.
+      - name: Install the pinned headless-browser toolchain
+        run: |
+          pip install -r requirements-demo.lock
+          python -m playwright install --with-deps chromium
+
+      - name: Served demo UI in a real headless Chromium (a SKIP fails this job)
+        # tests/browser/test_served_demo_ui.py skips LOUDLY when the extra or the browser is
+        # absent, so a fork's day-one offline gate still passes without either. In CI both are
+        # installed one step above, so no honest reason to skip is left, and a skip would mean
+        # the evidence quietly stopped running -- which is exactly how this suite reported green
+        # for as long as it has existed, without ever loading a page. `-rs` prints the reason;
+        # the grep is the part that turns it into a failure.
+        run: |
+          set -o pipefail
+          MKT_GOV_PROFILE=local python -m pytest tests/browser -q -rs | tee browser-evidence.log
+          if grep -qE 'skipped|no tests ran' browser-evidence.log; then
+            echo "the served-browser evidence did not run; it proves nothing" >&2
+            exit 1
+          fi
+
   ui-build:
     name: Next.js console builds and hydrates
     runs-on: ubuntu-latest
@@ -109,11 +134,12 @@ jobs:
           cache: pip
       # Audit the committed lockfiles so the result matches exactly what CI and the image
       # install. --no-deps: the locks are fully compiled, so audit those exact versions.
-      - name: pip-audit (dev + gcp lockfiles)
+      - name: pip-audit (dev + gcp + demo lockfiles)
         run: |
           python -m pip install --upgrade pip pip-audit
           pip-audit -r requirements-dev.lock --disable-pip --no-deps
           pip-audit -r requirements-gcp.lock --disable-pip --no-deps
+          pip-audit -r requirements-demo.lock --disable-pip --no-deps
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
