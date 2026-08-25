@@ -125,7 +125,7 @@ def _build_mcp_toolset() -> Any | None:
     """Build a governed ``MCPToolset`` from ``MKT_GOV_MCP_SERVER_URL``, or ``None``.
 
     Realizes the wiring the ``mcp_tool_catalog`` adapter documents: the governed,
-    least-privilege catalog declared in ``adapters/gcp/mcp_tool_catalog.py`` (MCP 2025-11-25) is
+    least-privilege catalog declared in ``adapters/gcp/mcp_tool_catalog.py`` (MCP 2026-07-28) is
     served by an out-of-process MCP server, and the agent reaches it through an ``MCPToolset``.
     Offline there is no MCP server, so the in-process FunctionTools are the surface and this
     returns ``None``. ADK / MCP imports are lazy (SPEC §4).

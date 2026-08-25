@@ -5,7 +5,7 @@ capabilities as :class:`ToolSpec` objects: ``review_asset``, ``search_rules`` an
 ``approve_review``. These are the tools the agent (or a peer agent) may invoke, each
 with an explicit JSON input schema so access is scoped and auditable (least privilege).
 
-Interop: the catalog speaks **MCP 2025-11-25**. In an ADK deployment these specs are
+Interop: the catalog speaks **MCP 2026-07-28**. In an ADK deployment these specs are
 surfaced to the agent through an ``McpToolset`` connected to an MCP server fronting the
 domain services; here the adapter only *declares* the governed catalog (declarative, no live
 MCP connection required to list). The ``mcp`` package is imported LAZILY and only when an
@@ -20,7 +20,7 @@ from ...config import Settings
 from ...domain.models import ToolSpec
 
 # MCP protocol revision this catalog conforms to.
-MCP_PROTOCOL_VERSION = "2025-11-25"
+MCP_PROTOCOL_VERSION = "2026-07-28"
 
 # Shared schema fragment: market / vertical scoping reused across tools.
 _SCOPE_SCHEMA: dict[str, Any] = {
@@ -99,7 +99,7 @@ def _build_catalog() -> dict[str, ToolSpec]:
 
 
 class McpToolCatalogAdapter:
-    """Declarative MCP 2025-11-25 catalog of D6's governed tools."""
+    """Declarative MCP 2026-07-28 catalog of D6's governed tools."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -118,10 +118,10 @@ class McpToolCatalogAdapter:
     # MCP wire helpers (lazy ``mcp`` import — only when actually used)
     # ------------------------------------------------------------------ #
     def as_mcp_tools(self) -> list[Any]:
-        """Render the catalog as MCP ``Tool`` objects (MCP 2025-11-25 schema)."""
+        """Render the catalog as MCP ``Tool`` objects (MCP 2026-07-28 schema)."""
         from mcp import types as mcp_types  # noqa: PLC0415 — lazy
 
-        # verify: https://modelcontextprotocol.io/specification/2025-11-25
+        # verify: https://modelcontextprotocol.io/specification/2026-07-28
         return [
             mcp_types.Tool(name=s.name, description=s.description, inputSchema=s.input_schema)
             for s in self._catalog.values()
