@@ -20,7 +20,7 @@ dependencies = [
   # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the Hrz4
   # promotion-gate client the platform eval adapter uses. review-kit: the rule R8
   # producer client that routes an escalated review to the Hrz7 maker-checker console.
-  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.3",
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.4",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
   "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.1",
   # Shared APAC national-identifier rows and the two-part, pack-independent leak scorer.
