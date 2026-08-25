@@ -18,7 +18,7 @@ TF_DIR := infra/terraform
 
 export MKT_GOV_PROFILE := $(PROFILE)
 
-.PHONY: venv install install-gcp lint format typecheck test eval gate \
+.PHONY: venv install install-demo install-gcp lock lint format typecheck test eval gate \
         ui-install ui-check demo demo-server demo-selftest demo-browser smoke-local run-api run-ui tf-validate tf-plan clean
 
 venv:
@@ -28,8 +28,15 @@ venv:
 install: venv ## Install the package + dev tooling (NO GCP SDK — local/onprem profile).
 	$(BIN)/python -m pip install -e ".[dev]"
 
+install-demo: venv ## Install the pinned headless-browser extra, then fetch its browser binary.
+	$(BIN)/python -m pip install -e ".[dev,demo]"
+	$(BIN)/python -m playwright install chromium
+
 install-gcp: ## Install with the managed-stack extra (google-genai, discoveryengine, ...).
 	$(BIN)/python -m pip install -e ".[gcp,dev]"
+
+lock: ## Recompile every lockfile from pyproject.toml and restore the tag = commit headers.
+	$(BIN)/python scripts/lock.py
 
 lint:
 	$(BIN)/ruff check src tests scripts/render_review_ui.py scripts/demo_selftest.py
