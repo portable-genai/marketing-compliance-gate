@@ -23,9 +23,22 @@ market: ${MKT_MARKET:-SG}               # JP | AU | SG
 grounding_enabled: ${MKT_GROUNDING_ENABLED:-true}
 
 models:
-  reasoning: gemini-3.5-flash           # GA — finding narration (thinking=high)
+  # `location` is the Vertex location the model client calls, and it is DELIBERATELY NOT
+  # `region`. The client was built with the compute region until 2026-08-27, which capped every
+  # deployment at what its own region serves: us-central1 serves the 2.5 family and no Gemini 3,
+  # so the ids pinned below could never resolve there. gemini-3.1-pro, previously the
+  # hard-reasoning pin, resolves in NO location at all.
+  #
+  # Gemini 3.7 serves the `us` and `eu` MULTI-REGIONS only -- not `asia`, and not any single
+  # region. A multi-region endpoint pools capacity within one geography and Google documents ML
+  # processing as staying inside it, where `global` carries NO residency guarantee. So `us` here
+  # is a residency-preserving choice, an EU deployment sets `eu`, and an APAC deployment cannot
+  # have both Gemini 3 and in-region processing: it must either pin a 2.5 model its own region
+  # serves or accept `global` and say so. Do not quietly set `global`.
+  location: ${MODEL_LOCATION:-us}
+  reasoning: gemini-3.7-flash           # GA — finding narration (thinking=high)
   triage: gemini-3.1-flash-lite         # GA — routing / triage / guardrail pre-checks
-  hard_reasoning: gemini-3.1-pro        # Preview — OFF unless use_hard_reasoning=true
+  hard_reasoning: gemini-3.7-flash  # no Gemini 3 PRO tier serves us or eu
   use_hard_reasoning: false
 
 knowledge_base:
