@@ -15,7 +15,13 @@ from __future__ import annotations
 from typing import Any
 
 from hex_service_kit.assertion import require_claims, require_pinned_algorithm
-from hex_service_kit.federation import IAP_ASSERTION_HEADER, IAP_ISSUER, IAP_KEYS_URL
+from hex_service_kit.federation import (
+    IAP_ASSERTION_HEADER,
+    IAP_ISSUER,
+    IAP_KEYS_URL,
+    FederationPolicy,
+    principal_from_iap_claims,
+)
 from hex_service_kit.identity import IdentityError as AssertionRefused
 
 from ...config import Settings
@@ -39,6 +45,22 @@ _IAP_ISSUER = IAP_ISSUER
 #: is the subject the audit record attributes to; the previous ``email or sub`` reader accepted
 #: an assertion carrying only one of them and could not tell an absent claim from an empty one.
 _REQUIRED_CLAIMS = ("iss", "sub", "email", "exp")
+
+#: The reviewed policy the CLAIM half is evaluated under, and the whole of what this
+#: deployment decides about a verified caller once its signature has been checked.
+#:
+#: It is a literal rather than a setting because every value in it is a decision this
+#: repository has already made and none of it varies by deployment yet: no domain is mapped
+#: to a tenant id, no domain is mapped to a group, and the hosted domain IS the tenant id
+#: here.
+#:
+#: ``tenant_from_hosted_domain`` is ON, and it is an OPT-IN rather than a fallback. IAP
+#: restricts the audience to one organisation on this deployment, so the ``hd`` claim and the
+#: tenant partition are the same string. Left OFF, these same assertions would resolve to no
+#: tenant at all: fail-closed, but closed for every verified user, and an offline gate would
+#: not notice, because the local profile never constructs this adapter. Writing the choice
+#: down is what makes it readable and testable; a silent fallback would be neither.
+_FEDERATION_POLICY = FederationPolicy(tenant_from_hosted_domain=True)
 
 
 _VERIFIER_UNAVAILABLE = (
@@ -123,17 +145,20 @@ class IapIdentityAdapter:
         # issuer, so a Google-signed token from another issuer that satisfied the other two would
         # have been accepted here on the strength of a docstring that said otherwise.
         self._refuse_unpinned_claims(claims)
-        subject = str(claims["email"]).strip()
-        # Tenant from the hosted-domain claim; entitlement principals are derived
-        # server-side (here, the verified subject; production maps Cloud Identity groups).
-        tenant = str(claims.get("hd") or "").strip()
-        principals: tuple[str, ...] = (f"user:{subject}",)
-        return Principal(
-            subject=subject,
-            principals=principals,
-            tenant=tenant,
-            assurance="iap",
+        # Everything after the signature is ONE reviewed decision, and it is the commons
+        # function rather than a fiftieth copy of it: which string is the subject, which
+        # partition is the tenant, which entitlement principals the caller holds, what
+        # assurance the audit record carries. The cryptography stays here, because the kit's
+        # core is pure standard library with no runtime dependencies and verifies nothing.
+        #
+        # ``include_subject_principal`` is stated, never defaulted. This adapter family grants
+        # the verified subject its own ``user:<subject>`` principal and the other family does
+        # not; that is an authorization decision, so the call site says which one this is.
+        return principal_from_iap_claims(
+            claims,
+            _FEDERATION_POLICY,
             source="gcp-iap",
+            include_subject_principal=True,
         )
 
     def _refuse_unpinned_algorithm(self, assertion: str) -> None:
