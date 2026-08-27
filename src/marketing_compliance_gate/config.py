@@ -167,9 +167,9 @@ class ModelSettings:
     #: serves the `us` and `eu` multi-regions only; `global` carries no residency
     #: guarantee. See models.location in config/settings.yaml.
     location: str = "us"
-    reasoning: str = "gemini-3.7-flash"
-    triage: str = "gemini-3.1-flash-lite"
-    hard_reasoning: str = "gemini-3.7-flash"  # Preview — feature-flagged off by default
+    reasoning: str = "gemini-3.5-flash"
+    triage: str = "gemini-3.5-flash"
+    hard_reasoning: str = "gemini-3.5-flash"  # Preview — feature-flagged off by default
     use_hard_reasoning: bool = False
 
 
