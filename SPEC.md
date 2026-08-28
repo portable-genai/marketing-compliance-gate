@@ -55,6 +55,18 @@ the rule engine.
 
 Every port is a `@runtime_checkable` `Protocol`; adapters need only structural conformance.
 
+The governed catalog is SERVED, not only declared: `marketing_compliance_gate.mcp` answers it
+over MCP 2026-07-28 on stdio (`make mcp-serve`), and `hex_service_kit.mcpserve.bind` refuses at
+start-up if the declared tools and the bound handlers disagree in either direction.
+
+It declares the MAKER half only. `approve_review` was declared here and removed: approval IS the
+four-eyes control, this transport verifies no human, and rule R8 already routes an escalated
+review to the Hrz7 console, which resolves a real principal before anyone disposes. The ADK tool
+surface and the A2A card exclude it for the same reason, so all three surfaces now agree.
+`market` and `vertical` are required rather than optional on both tools, because
+`RuleProviderPort.search` cannot run without them and the managed adapter keys its per-market
+residency check on the market.
+
 ## 4. The deterministic engine (`domain/rule_engine.py`)
 
 `RuleEngine` is the heart: pure (stdlib only), replayable (same asset + rule set produce the
