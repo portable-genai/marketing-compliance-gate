@@ -21,7 +21,7 @@ import type {
   SubstantiationEvidence,
   Vertical,
 } from "./types";
-import { ConfiguredEmptyError, readEnvSetting } from "./env-setting.mjs";
+import { ConfiguredEmptyError, readEnvValue } from "./env-setting.mjs";
 
 // The API base is resolved in THREE states, not two.
 //
@@ -35,7 +35,13 @@ import { ConfiguredEmptyError, readEnvSetting } from "./env-setting.mjs";
 // Unset keeps the documented loopback default, which is what a laptop wants. Set-and-empty
 // refuses, because an emptied value names nothing and the default is the more permissive branch.
 const DEFAULT_API_BASE = "http://localhost:8105";
-const API_BASE_SETTING = readEnvSetting(process.env, "NEXT_PUBLIC_API_BASE");
+// The literal member expression is required: a bundler substitutes the public value
+// only where it sees exactly this, and handing it `process.env` leaves the browser
+// reading {} and silently taking the hard-coded loopback default.
+const API_BASE_SETTING = readEnvValue(
+  "NEXT_PUBLIC_API_BASE",
+  process.env.NEXT_PUBLIC_API_BASE,
+);
 if (API_BASE_SETTING.isConfiguredEmpty) {
   throw new ConfiguredEmptyError(
     "NEXT_PUBLIC_API_BASE is set to an empty value. An emptied variable names nothing, " +

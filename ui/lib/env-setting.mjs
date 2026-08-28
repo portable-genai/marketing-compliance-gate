@@ -55,3 +55,27 @@ export function readEnvSetting(env, name) {
     hasValue: present && value !== "",
   };
 }
+
+/**
+ * The same three states, for a value the CALLER already read from `process.env`.
+ *
+ * `readEnvSetting(process.env, name)` is correct on the server and wrong in a browser bundle.
+ * A bundler can only substitute a public variable where it appears as the literal member
+ * expression `process.env.NEXT_PUBLIC_X`; handing the whole `process.env` object to a function
+ * leaves nothing to substitute, so the browser evaluates `{}[name]`, every read reports UNSET,
+ * and each console silently falls back to its own hard-coded loopback default. Embedded in a
+ * host portal that meant every app called `http://localhost:<its own port>` instead of its
+ * same-origin mount, which the page's own `connect-src 'self'` then blocked: the console
+ * rendered, reported its backend unreachable, and no request ever left the page.
+ *
+ * So the read stays a literal at the call site and the DECISION stays here:
+ *
+ *     readEnvValue("NEXT_PUBLIC_API_BASE", process.env.NEXT_PUBLIC_API_BASE)
+ *
+ * @param {string} name
+ * @param {string | undefined} raw
+ * @returns {EnvSetting}
+ */
+export function readEnvValue(name, raw) {
+  return readEnvSetting({ [name]: raw }, name);
+}

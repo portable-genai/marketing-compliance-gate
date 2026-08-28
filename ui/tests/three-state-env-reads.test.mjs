@@ -149,6 +149,18 @@ export function codeOnly(source) {
 /** `process.env.NAME`, and the bracket form, wherever they appear in real code. */
 const DIRECT_READ = /process\.env(?:\.([A-Za-z_$][\w$]*)|\[\s*["'`]([^"'`]+)["'`]\s*\])/g;
 
+/**
+ * The client-read relaxation: the raw value handed straight to `readEnvValue`, which decides
+ * all three states. A browser bundle REQUIRES the literal `process.env.NEXT_PUBLIC_X` here,
+ * because that is the only form a bundler can substitute; passing `process.env` to a function
+ * leaves the browser reading `{}` and every variable reports unset. So the read stays literal
+ * and the decision still happens in one place, which is what this rule exists to guarantee.
+ * The argument must be the bare read: anything with a `||`, `??` or default beside it is the
+ * two-state collapse again and is still reported.
+ */
+const CLIENT_THREE_STATE_READ =
+  /readEnvValue\(\s*["'`][^"'`]+["'`]\s*,\s*process\.env\.[A-Za-z_$][\w$]*\s*,?\s*\)/;
+
 /** The exact-match relaxation: the raw read compared against a literal, with no default. */
 const EXACT_MATCH =
   /process\.env(?:\.[A-Za-z_$][\w$]*|\[\s*["'`][^"'`]+["'`]\s*\])\s*(?:===|!==|==|!=)\s*["'`]/;
@@ -159,11 +171,20 @@ export function findings(sources = scannedSources()) {
   for (const file of sources) {
     const relativePath = relative(UI_ROOT, file);
     if (relativePath === THREE_STATE_READER_MODULE) continue;
-    const lines = codeOnly(readFileSync(file, "utf8")).split("\n");
+    const code = codeOnly(readFileSync(file, "utf8"));
+    // `readEnvValue("X", process.env.X)` is commonly wrapped across lines by the formatter, so
+    // the relaxation is judged on the whole file rather than on the line the read sits on.
+    const clientReads = new Set(
+      [...code.matchAll(new RegExp(CLIENT_THREE_STATE_READ, "g"))].map(
+        (m) => m[0].match(/process\.env\.([A-Za-z_$][\w$]*)/)[1],
+      ),
+    );
+    const lines = code.split("\n");
     lines.forEach((text, index) => {
       for (const match of text.matchAll(DIRECT_READ)) {
         const variable = match[1] ?? match[2];
         if (variable in TWO_STATE_READS_WITH_A_REASON) continue;
+        if (clientReads.has(variable)) continue;
         // The exact-match escape is judged on the line, because that is the whole expression:
         // a comparison against a literal has no default to inherit.
         if (EXACT_MATCH.test(text)) continue;
