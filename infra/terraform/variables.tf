@@ -227,3 +227,36 @@ variable "alert_notification_channels" {
   type        = list(string)
   default     = []
 }
+
+variable "resource_location_values" {
+  description = <<-EOT
+    Value groups for the gcp.resourceLocations Org Policy. Empty (the default) derives the
+    strictest form from the deploy region: that region and its sub-locations, nothing else.
+
+    Widen it ONLY where a service this stack genuinely needs has no presence at single-region
+    granularity, and treat the width as the residency claim rather than as plumbing. Two
+    services in this catalog force the question:
+
+      * Agent Search serves `global`, `us` and `eu` and NO Cloud region at all.
+      * Document AI serves the deploy region only once Google grants single-region access,
+        and routes to the `us` multi-region until then.
+
+    Move to the smallest value group that still describes ONE JURISDICTION -- `in:us-locations`
+    keeps every resource inside the United States -- and state the residency claim at that
+    granularity rather than pretending it is still single-region. NEVER list an individual
+    foreign region to unblock one service: that turns a jurisdiction boundary into a list of
+    exceptions nobody can reason about.
+
+    NOT YET VERIFIED BY EXECUTION: whether a `global` Agent Search data store is subject to
+    this constraint at all, or is exempt as a global resource. Confirm at first apply and
+    record the answer rather than guessing; the failure mode if it IS subject is an apply
+    error naming discoveryengine, which is the good kind of failure.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for value in var.resource_location_values : startswith(value, "in:") || startswith(value, "is:")])
+    error_message = "Each value must be an Org Policy location value group (in:...) or a literal location (is:...)."
+  }
+}
