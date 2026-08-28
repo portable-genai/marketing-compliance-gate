@@ -1,4 +1,4 @@
-# D6 Marketing Compliance and Brand Governance — developer tasks.
+# Mkt6 Marketing Compliance and Brand Governance: developer tasks.
 #
 # The gate (lint + format + types + tests + eval) runs on the local profile with the
 # [dev] extra only (no google-cloud-*), matching CI. Override PROFILE=gcp for the managed
@@ -25,7 +25,7 @@ venv:
 	$(PY) -m venv $(VENV)
 	$(BIN)/python -m pip install --upgrade pip
 
-install: venv ## Install the package + dev tooling (NO GCP SDK — local/onprem profile).
+install: venv ## Install the package + dev tooling (NO GCP SDK: local/onprem profile).
 	$(BIN)/python -m pip install -e ".[dev]"
 
 install-demo: venv ## Install the pinned headless-browser extra, then fetch its browser binary.
@@ -39,10 +39,12 @@ lock: ## Recompile every lockfile from pyproject.toml and restore the tag = comm
 	$(BIN)/python scripts/lock.py
 
 lint:
-	$(BIN)/ruff check src tests scripts/render_review_ui.py scripts/demo_selftest.py
+	$(BIN)/ruff check src tests scripts/render_review_ui.py scripts/demo_selftest.py \
+		scripts/render_plugin.py
 
 format:
-	$(BIN)/ruff format --check src tests scripts/render_review_ui.py scripts/demo_selftest.py
+	$(BIN)/ruff format --check src tests scripts/render_review_ui.py scripts/demo_selftest.py \
+		scripts/render_plugin.py
 
 typecheck:
 	$(BIN)/mypy src
@@ -53,11 +55,17 @@ test:
 eval:
 	$(BIN)/python eval/run_eval.py
 
+plugin: ## Render the Agent Plugins 1.0.0 directory from this repo's own declarations.
+	PYTHONPATH=src $(BIN)/python scripts/render_plugin.py --dest dist/plugin
+
+mcp-serve: ## Serve the governed tool catalog over MCP 2026-07-28 (stdio; needs [gcp]).
+	PYTHONPATH=src $(BIN)/python -m marketing_compliance_gate.mcp
+
 # The full gate, green before any change lands.
 portability:
 	PYTHONPATH=src $(BIN)/python scripts/portability_demo.py
 
-gate: lint format typecheck test eval demo-selftest portability
+gate: lint format typecheck test eval demo-selftest portability plugin
 
 # The ui/ console gate. Requires node; nothing in `make gate` does.
 ui-install: ## Install the console's locked dependencies.
