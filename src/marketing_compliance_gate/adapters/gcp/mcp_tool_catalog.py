@@ -1,15 +1,30 @@
-"""MCP tool-catalog adapter (ToolCatalogPort) — the governed tool surface for D6.
+"""MCP tool-catalog adapter (ToolCatalogPort), the governed tool surface for Mkt6.
 
-Backs the domain ``ToolCatalogPort`` by exposing D6's governed, least-privilege
-capabilities as :class:`ToolSpec` objects: ``review_asset``, ``search_rules`` and
-``approve_review``. These are the tools the agent (or a peer agent) may invoke, each
-with an explicit JSON input schema so access is scoped and auditable (least privilege).
+Backs the domain ``ToolCatalogPort`` by exposing Mkt6's governed, least-privilege
+capabilities as :class:`ToolSpec` objects: ``review_asset`` and ``search_rules``. These are
+the tools the agent (or a peer agent) may invoke, each with an explicit JSON input schema so
+access is scoped and auditable (least privilege).
 
-Interop: the catalog speaks **MCP 2026-07-28**. In an ADK deployment these specs are
-surfaced to the agent through an ``McpToolset`` connected to an MCP server fronting the
-domain services; here the adapter only *declares* the governed catalog (declarative, no live
-MCP connection required to list). The ``mcp`` package is imported LAZILY and only when an
-actual MCP wire object is requested.
+**``approve_review`` was declared here and is deliberately gone.** It took a ``review_id``
+that nothing in this service can resolve, which is how it was found: the catalog had never
+been served, so nothing had ever checked that a declared tool could be answered. Supplying
+the missing store was the wrong repair. Approval IS the four-eyes control, and this
+repository had already decided twice in writing that it is not a tool:
+``agent/tools.py`` excludes it from the ADK surface because "an agent that could approve its
+own reviews would defeat the four-eyes control", and ``domain/services.py`` records that the
+router is "bound only on this maker (review-producer) path; the agent never gets an approve
+tool". Serving it over a transport that verifies no human would have let an unauthenticated
+caller act as the checker. The checker half is Hrz7's: rule R8 routes an escalated review to
+the review console, which resolves a real principal before anyone disposes.
+
+So this catalog declares the maker half only, and
+``tests/unit/test_mcp_surface_is_served_and_packaged.py`` holds it there rather than trusting
+the absence.
+
+Interop: the catalog speaks **MCP 2026-07-28**. It is served by
+``marketing_compliance_gate.mcp``, which binds these declarations to the callables that
+already perform them and refuses to start on a mismatch in either direction. The ``mcp``
+package is imported LAZILY and only when an actual MCP wire object is requested.
 """
 
 from __future__ import annotations
@@ -22,19 +37,34 @@ from ...domain.models import ToolSpec
 # MCP protocol revision this catalog conforms to.
 MCP_PROTOCOL_VERSION = "2026-07-28"
 
-# Shared schema fragment: market / vertical scoping reused across tools.
+# Shared schema fragment: the (market, vertical) scope key, reused across tools.
+#
+# These read as optional filters ("Restrict to a single market") until the catalog is actually
+# SERVED, and then they do not hold. ``RuleProviderPort.search`` takes a market and a vertical
+# and every adapter filters on both; there is no search-all-markets path to fall back to. A
+# handler answering a call that omitted them would have to pick a market, and picking one means
+# silently answering a Singapore question with Japanese rules.
+#
+# The managed adapter makes it sharper than a wrong answer: ``file_search_rules.search`` calls
+# ``resolve_region(settings, market=market)``, so the market is what the per-market RESIDENCY
+# check keys on. An optional market is an optional residency check.
+#
+# They are required, and named as the scope rather than described as a filter.
 _SCOPE_SCHEMA: dict[str, Any] = {
     "market": {
         "type": "string",
         "enum": ["JP", "AU", "SG"],
-        "description": "Restrict to a single market.",
+        "description": "The market whose rules apply, and whose residency region is checked.",
     },
     "vertical": {
         "type": "string",
         "enum": ["banking", "online_retail"],
-        "description": "Restrict to a single vertical.",
+        "description": "The vertical whose rule set applies.",
     },
 }
+
+#: The keys of :data:`_SCOPE_SCHEMA`, so ``required`` cannot drift from what it declares.
+_SCOPE_REQUIRED: list[str] = list(_SCOPE_SCHEMA)
 
 
 def _build_catalog() -> dict[str, ToolSpec]:
@@ -58,7 +88,7 @@ def _build_catalog() -> dict[str, ToolSpec]:
                     },
                     **_SCOPE_SCHEMA,
                 },
-                "required": ["body"],
+                "required": ["body", *_SCOPE_REQUIRED],
                 "additionalProperties": False,
             },
         ),
@@ -74,24 +104,7 @@ def _build_catalog() -> dict[str, ToolSpec]:
                     "query": {"type": "string", "description": "Natural-language query."},
                     **_SCOPE_SCHEMA,
                 },
-                "required": ["query"],
-                "additionalProperties": False,
-            },
-        ),
-        "approve_review": ToolSpec(
-            name="approve_review",
-            description=(
-                "Record a human checker's approve / reject decision on a review (the "
-                "marketing maker-checker gate). Audited; never auto-approves."
-            ),
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "review_id": {"type": "string"},
-                    "approved": {"type": "boolean"},
-                    "rationale": {"type": "string"},
-                },
-                "required": ["review_id", "approved"],
+                "required": ["query", *_SCOPE_REQUIRED],
                 "additionalProperties": False,
             },
         ),
@@ -99,7 +112,7 @@ def _build_catalog() -> dict[str, ToolSpec]:
 
 
 class McpToolCatalogAdapter:
-    """Declarative MCP 2026-07-28 catalog of D6's governed tools."""
+    """The MCP 2026-07-28 catalog of Mkt6's governed tools, served by ``..mcp``."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -115,11 +128,11 @@ class McpToolCatalogAdapter:
         return self._catalog.get(name)
 
     # ------------------------------------------------------------------ #
-    # MCP wire helpers (lazy ``mcp`` import — only when actually used)
+    # MCP wire helpers (lazy ``mcp`` import, only when actually used)
     # ------------------------------------------------------------------ #
     def as_mcp_tools(self) -> list[Any]:
         """Render the catalog as MCP ``Tool`` objects (MCP 2026-07-28 schema)."""
-        from mcp import types as mcp_types  # noqa: PLC0415 — lazy
+        from mcp import types as mcp_types  # noqa: PLC0415, lazy
 
         # verify: https://modelcontextprotocol.io/specification/2026-07-28
         return [

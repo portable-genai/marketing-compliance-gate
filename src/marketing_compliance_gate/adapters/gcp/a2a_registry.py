@@ -1,7 +1,7 @@
-"""A2A registry adapter (AgentRegistryPort) — agent discovery and governance for D6 (A3).
+"""A2A registry adapter (AgentRegistryPort): agent discovery and governance for Mkt6 (A3).
 
 Backs the domain ``AgentRegistryPort`` with an in-process, **A2A v1.0**-style registry of
-:class:`AgentCard` objects. In a standalone deployment D6 registers its own card here and
+:class:`AgentCard` objects. In a standalone deployment Mkt6 registers its own card here and
 can serve it at the well-known A2A discovery path; inside the full platform the ``platform``
 profile swaps this for a thin client to the shared agent registry.
 
@@ -20,8 +20,26 @@ from ...domain.models import AgentCard, AgentSkill
 # The A2A well-known discovery path for an agent's card.
 AGENT_CARD_PATH = "/.well-known/agent-card.json"
 
-# D6's own skills, surfaced on its AgentCard so peers / the registry can discover the
+# Mkt6's own skills, surfaced on its AgentCard so peers / the registry can discover the
 # governed compliance-governance capabilities the system offers (generic across verticals).
+#
+# **This list used to carry a second skill, and it contradicted the card actually served.**
+# ``approve_review`` ("Maker-checker approval") was advertised here while
+# ``agent/agent_card.py``, which is what ``GET /.well-known/agent-card.json`` returns, declares
+# the maker skill only and states that approval "is deliberately not advertised as an agent
+# skill". So a peer discovering Mkt6 through the registry was told it could have a review
+# approved, and a peer reading the served card was told it could not, from one repository. The
+# route's own docstring claimed a peer and the registry "sees one capability surface"; they did
+# not.
+#
+# It is gone for the reason the served card already gave. Approval IS the four-eyes control:
+# advertising it to a peer AGENT offers the checker's half to a caller that is not a human, and
+# rule R8 already routes an escalated review to the Hrz7 console, which resolves a real
+# principal before anyone disposes. The same declaration was removed from the MCP catalog in
+# the same change, so all three surfaces now agree.
+#
+# ``tests/unit/test_mcp_surface_is_served_and_packaged.py`` holds the two cards together rather
+# than trusting them to stay in step.
 _D6_SKILLS: tuple[AgentSkill, ...] = (
     AgentSkill(
         id="review_asset",
@@ -29,15 +47,8 @@ _D6_SKILLS: tuple[AgentSkill, ...] = (
         description=(
             "Review a Campaign / Creative / Offer against the per-market, per-vertical "
             "advertising, consumer-protection and consent rules, for any of banking / "
-            "online retail across JP/AU/SG, with a cited finding per rule."
-        ),
-    ),
-    AgentSkill(
-        id="approve_review",
-        name="Maker-checker approval",
-        description=(
-            "Record a human checker's approve / reject decision on a review (the marketing "
-            "maker-checker gate), with provenance and an audit record."
+            "online retail across JP/AU/SG, with a cited finding per rule. The maker half: "
+            "a non-compliant review escalates to a human checker and is never self-approved."
         ),
     ),
 )
@@ -49,7 +60,7 @@ class A2ARegistryAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._cards: dict[str, AgentCard] = {}
-        # Seed the registry with D6's own card so a standalone deployment is discoverable.
+        # Seed the registry with Mkt6's own card so a standalone deployment is discoverable.
         self.register(self._self_card())
 
     # ------------------------------------------------------------------ #
@@ -68,7 +79,7 @@ class A2ARegistryAdapter:
     # A2A discovery helper
     # ------------------------------------------------------------------ #
     def agent_card_dict(self, name: str | None = None) -> dict:
-        """Return the ``/.well-known/agent-card.json`` body for ``name`` (default: D6's)."""
+        """Return the ``/.well-known/agent-card.json`` body for ``name`` (default: Mkt6's)."""
         card = self.get(name) if name else self._cards.get(self._self_name())
         if card is None:
             raise KeyError(f"No AgentCard registered for '{name}'.")
@@ -93,7 +104,7 @@ class A2ARegistryAdapter:
         return AgentCard(
             name=self._self_name(),
             description=(
-                "D6 Marketing Compliance and Brand Governance — a deterministic rule engine "
+                "Marketing Compliance and Brand Governance: a deterministic rule engine "
                 "checking claims, permissions, brand and consent against per-market, "
                 "per-vertical rules, generic across banking and online retail and the "
                 "JP/AU/SG markets, with a cited finding per rule and a maker-checker gate."
