@@ -49,7 +49,7 @@ gcp = [
   "google-cloud-logging>=3.11",
   "opentelemetry-sdk>=1.27",
   "opentelemetry-exporter-gcp-trace>=1.7",
-  "a2a-sdk>=1.1",
+  "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",
 ]
 # Demo tooling is a PINNED, opt-in extra (F2): the headless-browser walkthrough of the served
