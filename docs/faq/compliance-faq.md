@@ -72,7 +72,15 @@ Yes, at deploy time, per market: a residency region selected from an allowlist (
 `asia-northeast1`, AU `australia-southeast1`, SG `asia-southeast1`, default
 `asia-southeast1`), validated to fail fast, with regional endpoints, a
 `gcp.resourceLocations` Org Policy allowlist, regional CMEK, and a dry-run-first VPC-SC
-perimeter (P-03, P-09). The residency-violation CI gate is the sibling **Rsk3**
+perimeter (P-03, P-09).
+
+**Agent Search is the one service that follows none of it:** it serves only `global` / `us` /
+`eu`, so the retrieval corpus defaults to `global` and is unlocated. `us` or `eu` confines it to
+one jurisdiction where an obligation bites, and the location Org Policy must be wide enough to
+permit the choice. It is recorded in [`COMPLIANCE.md`](../../COMPLIANCE.md) rather than
+absorbed.
+
+The residency-violation CI gate is the sibling **Rsk3**
 `architecture-validator` (`domain/residency/`); the exit / concentration-risk plan is **Rgc9**
 `operational-resilience-mapping` (`domain/concentration_exit/`). This repo enforces residency in
 its own infra and is one of the systems those tools reason about.
