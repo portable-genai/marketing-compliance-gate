@@ -57,7 +57,7 @@ are one configured rule set among others, not the only frame.
 
 ```bash
 make install          # 3.14 venv + [dev] only (no GCP SDK)
-make gate             # ruff + ruff format + mypy + pytest + eval, all green
+make gate             # ruff + ruff format + mypy + pytest + eval + demo/portability + plugin
 make smoke-local      # review a non-compliant banking asset via the CLI
 make demo             # run the review flow + render the static audit-first HTML
 ```
