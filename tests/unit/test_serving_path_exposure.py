@@ -87,12 +87,38 @@ def test_a_lan_peer_is_refused_the_consequential_route_too() -> None:
     assert response.status_code == 503
 
 
-def test_a_loopback_peer_still_gets_the_local_demo() -> None:
-    """The guard must not break the offline demo it exists to protect, or it will be reverted."""
+def test_a_loopback_peer_still_gets_the_local_demo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard must not break the offline demo it exists to protect, or it will be reverted.
+
+    The profile is set explicitly, because that is the posture this test is about. An UNSET
+    profile deliberately advertises no personas: the seeded-persona adapter refuses to construct
+    when nobody chose a profile, and offering identities that cannot be resolved would be worse
+    than offering none. This test never set it, so it was asserting the persona list of a run
+    that had refused to build one, and it has been red for as long as that refusal has existed.
+    """
+    monkeypatch.setenv("MKT_GOV_PROFILE", "local")
+    deps.get_container.cache_clear()
     response = _client(LOOPBACK_PEER).get("/v1/personas")
     assert response.status_code == 200
     assert {p["id"] for p in response.json()} >= {"analyst", "approver", "auditor"}
     assert _client(LOOPBACK_PEER).get("/healthz").status_code == 200
+    deps.get_container.cache_clear()
+
+
+def test_an_unset_profile_advertises_no_personas_rather_than_unresolvable_ones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The other half of the same decision, which nothing had covered.
+
+    Unset is not consent. A run where nobody chose a profile must not hand out a seeded
+    identity, so the picker is empty rather than populated with personas the adapter would
+    refuse to resolve.
+    """
+    monkeypatch.delenv("MKT_GOV_PROFILE", raising=False)
+    deps.get_container.cache_clear()
+
+    assert _client(LOOPBACK_PEER).get("/v1/personas").json() == []
+    deps.get_container.cache_clear()
 
 
 def test_the_guard_is_the_outermost_middleware() -> None:
