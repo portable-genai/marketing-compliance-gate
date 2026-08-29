@@ -8,7 +8,7 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "D6 Marketing Compliance and Brand Governance",
+  title: "Marketing Compliance and Brand Governance",
   description:
     "Cited marketing-compliance reviews from a deterministic claim / permission / brand / consent rule engine, the marketing maker-checker gate, generic across banking and online retail and the JP/AU/SG markets.",
 };
