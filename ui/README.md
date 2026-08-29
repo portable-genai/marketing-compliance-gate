@@ -21,11 +21,13 @@ market and vertical.
 
 ## Configure the backend
 
-Set the API base URL (defaults to the Mkt6 API port 8105):
+Nothing to configure to run against `make run-api`: `NEXT_PUBLIC_API_BASE` already
+defaults to the Mkt6 API port 8105. Write the override yourself only when the API is
+somewhere else, and write it before `npm run build`, because Next inlines every
+`NEXT_PUBLIC_*` value at build time:
 
 ```bash
-cp .env.local.example .env.local
-# edit NEXT_PUBLIC_API_BASE if your API runs elsewhere
+echo 'NEXT_PUBLIC_API_BASE=https://api.elsewhere.example' > .env.local
 ```
 
 ## Run

@@ -106,8 +106,14 @@ see reading the JSON.
 
 ```bash
 make run-api            # FastAPI on :8105 (local profile)
-make run-ui             # Next.js dev server; paste copy, pick market/vertical, review
+# the console, on a PRODUCTION build; paste copy, pick market/vertical, review:
+cd ui && npm install && npm run build && npm run start   # http://localhost:3000
 ```
+
+`NEXT_PUBLIC_API_BASE` needs no setting here: the console already defaults to `:8105`, the
+port `make run-api` binds. Demo the built console, never `make run-ui`: that target is the
+developer loop and serves `next dev`, and the standing rule for every demo in the fleet is
+`org-metadata/docs/demos/demo-inventory.md`: production builds only.
 
 "Check green claims" runs the substantiation gate and opens the green-claims panel: the
 verdict and coverage bar per claim, the evidence counted, the gaps, the green-claim rules,
