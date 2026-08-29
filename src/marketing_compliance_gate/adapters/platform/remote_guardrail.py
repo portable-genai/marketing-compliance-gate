@@ -18,7 +18,7 @@ class RemoteGuardrailAdapter:
 
     def __init__(self, settings: object) -> None:
         self._settings = settings
-        self._base_url = setting_or_default("HRZ_GUARDRAIL_URL", _DEFAULT_URL).rstrip("/")
+        self._base_url = setting_or_default("GUARDRAIL_GATEWAY_URL", _DEFAULT_URL).rstrip("/")
 
     def screen(self, text: str, direction: Direction) -> GuardrailVerdict:
         raise NotImplementedError(_PHASE)

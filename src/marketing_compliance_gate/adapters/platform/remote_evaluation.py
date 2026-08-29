@@ -48,7 +48,7 @@ class RemoteEvaluationAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client = PromotionGateClient(
-            setting_or_default("HRZ_QUALITY_URL", _DEFAULT_URL),
+            setting_or_default("QUALITY_GATE_URL", _DEFAULT_URL),
             bundle=_BUNDLE,
             model=settings.models.reasoning,
             prompt_version=_PROMPT_VERSION,

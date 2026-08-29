@@ -38,7 +38,7 @@ _BASE = "https://hrz4.test"
 
 
 def _adapter(monkeypatch: pytest.MonkeyPatch) -> RemoteEvaluationAdapter:
-    monkeypatch.setenv("HRZ_QUALITY_URL", _BASE)
+    monkeypatch.setenv("QUALITY_GATE_URL", _BASE)
     return RemoteEvaluationAdapter(Settings())
 
 

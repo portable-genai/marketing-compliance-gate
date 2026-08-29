@@ -138,7 +138,7 @@ AI-quality service (not a stub): `evaluate` POSTs `/v1/evaluations` and `gate` P
 dataset_id, bundle: "mkt6-compliance"}` body, and `evaluate` maps the returned `results[]`
 into an `EvalReport`. Metric selection is server-side by the registered bundle name
 `mkt6-compliance`: the client never sends a metric list, so tightening a threshold stays
-Hrz4's concern. The base URL comes from `HRZ_QUALITY_URL`.
+Hrz4's concern. The base URL comes from `QUALITY_GATE_URL`.
 
 ## 8. The green-claims gate
 
