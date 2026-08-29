@@ -182,10 +182,23 @@ export function frameOptions(ancestors) {
  * @returns {string}
  */
 export function contentSecurityPolicy(env, nonce) {
-  const connectSrc = ["'self'", apiOrigin(env)].filter(Boolean).join(" ");
-  const scriptSrc = nonce
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
-    : "script-src 'self'";
+  // The ONE dev-only relaxation, and the only place either token appears. Turbopack's HMR client
+  // evaluates its module updates and opens a websocket back to the dev server, so `next dev`
+  // served the production policy renders the page and never hydrates: React reports that eval is
+  // unavailable, `__next_f` never fills and no control does anything. `next build` and
+  // `next start` set NODE_ENV=production, so neither token can reach a deployment, and
+  // `scripts/assert-hydratable.mjs` proves that against the BUILT artefact rather than by review.
+  const isDev = env.NODE_ENV !== "production";
+  const connectSrc = ["'self'", apiOrigin(env), isDev ? "ws: wss:" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const scriptSrc = [
+    "script-src 'self'",
+    nonce ? `'nonce-${nonce}' 'strict-dynamic'` : "",
+    isDev ? "'unsafe-eval'" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return [
     "default-src 'self'",
     "base-uri 'self'",
