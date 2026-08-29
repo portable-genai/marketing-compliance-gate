@@ -18,7 +18,7 @@ class RemoteAuditAdapter:
 
     def __init__(self, settings: object) -> None:
         self._settings = settings
-        self._base_url = setting_or_default("HRZ_AUDIT_URL", _DEFAULT_URL).rstrip("/")
+        self._base_url = setting_or_default("AUDIT_URL", _DEFAULT_URL).rstrip("/")
 
     def record(self, event: AuditEvent) -> None:
         raise NotImplementedError(_PHASE)

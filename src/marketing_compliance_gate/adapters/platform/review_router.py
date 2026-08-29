@@ -2,8 +2,8 @@
 
 Builds the kit review from the escalated compliance review and submits it to the Hrz7 service
 intake (``POST /v1/service/reviews``), S2S-authenticated. The Hrz7 base URL comes from
-``MKT6_HRZ7_URL`` and the S2S credentials from the shared platform env vars (``HRZ_S2S_TOKEN`` /
-``HRZ_S2S_SIGNING_KEY``), set on the deployed service. No cloud SDK is involved (the kit uses
+``HUMAN_REVIEW_URL`` and the S2S credentials from the shared platform env vars (``S2S_TOKEN`` /
+``S2S_SIGNING_KEY``), set on the deployed service. No cloud SDK is involved (the kit uses
 stdlib ``urllib`` plus the wire-compatible S2S headers), so this module imports cleanly with no GCP
 SDK; it is bound under the ``gcp`` and ``platform`` profiles because it makes a real network call
 to a sibling service.
@@ -32,9 +32,9 @@ class PlatformReviewRouter:
         self._settings = settings
 
     def _client(self) -> ReviewClient:
-        base_url = read_env_setting("MKT6_HRZ7_URL").value
+        base_url = read_env_setting("HUMAN_REVIEW_URL").value
         if not base_url:
-            raise RuntimeError("MKT6_HRZ7_URL must be set to route reviews to Hrz7")
+            raise RuntimeError("HUMAN_REVIEW_URL must be set to route reviews to Hrz7")
         return ReviewClient(base_url, token_env=TOKEN_ENV, signing_key_env=SIGNING_KEY_ENV)
 
     def route(  # pragma: no cover - needs live Hrz7

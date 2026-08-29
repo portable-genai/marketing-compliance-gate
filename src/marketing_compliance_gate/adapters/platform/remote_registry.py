@@ -18,7 +18,7 @@ class RemoteRegistryAdapter:
 
     def __init__(self, settings: object) -> None:
         self._settings = settings
-        self._base_url = setting_or_default("HRZ_REGISTRY_URL", _DEFAULT_URL).rstrip("/")
+        self._base_url = setting_or_default("AGENT_REGISTRY_URL", _DEFAULT_URL).rstrip("/")
 
     def register(self, card: AgentCard) -> None:
         raise NotImplementedError(_PHASE)
