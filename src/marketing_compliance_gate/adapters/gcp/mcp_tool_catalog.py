@@ -136,6 +136,6 @@ class McpToolCatalogAdapter:
 
         # verify: https://modelcontextprotocol.io/specification/2026-07-28
         return [
-            mcp_types.Tool(name=s.name, description=s.description, inputSchema=s.input_schema)
+            mcp_types.Tool(name=s.name, description=s.description, input_schema=s.input_schema)
             for s in self._catalog.values()
         ]
