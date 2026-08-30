@@ -161,6 +161,13 @@ def _interpolate(value: Any) -> Any:
     return value
 
 
+#: The profiles whose runtime is a managed cloud, for :attr:`Settings.runtime`. ``live`` is
+#: NOT one where it exists: its process, index and audit trail are on the operator's
+#: machine, and the banner states WHERE while the model half states WHOSE. ``onprem`` is not
+#: one either -- running on the adopter's own iron is its entire point.
+_MANAGED_PROFILES: frozenset[str] = frozenset({"gcp", "platform"})
+
+
 @dataclass(frozen=True)
 class ModelSettings:
     #: The Vertex location the model client calls, NOT the compute region. Gemini 3
@@ -276,6 +283,37 @@ class Settings:
                     f"managed region {self.region!r} does not match active market "
                     f"{self.market!r} residency region {expected!r}"
                 )
+
+    @property
+    def runtime(self) -> str:
+        """Where this process is running, as the UI banner states it: ``gcp`` or ``local``.
+
+        Derived from the profile, never sniffed from the environment. A console that read
+        its runtime from ``window.location`` would be right until the deployment served
+        through a proxy and wrong silently after that, so the service is the one asked.
+        """
+        return "gcp" if self.profile in _MANAGED_PROFILES else "local"
+
+    @property
+    def generator_model(self) -> str:
+        """Which model answers, for the UI banner (org decision, 2026-08-30).
+
+        Read off the LLM binding the container will actually build, not from a second
+        field someone has to remember to update. A repo that rebinds ``llm`` for a profile
+        changes what the banner says in the same edit, which is the only way the two stay
+        true to each other: a settings string would be a claim ABOUT the binding rather
+        than the binding.
+        """
+        binding = self.adapters.get("llm", {}).get(self.profile, "")
+        _, _, class_name = binding.partition(":")
+        if class_name == "GeminiLLMAdapter":
+            models = self.models
+            return models.hard_reasoning if models.use_hard_reasoning else models.reasoning
+        if class_name == "OnPremLLMAdapter":
+            # The on-prem adapter is a fail-fast migration placeholder: it raises rather
+            # than generating. Naming a model here would advertise one that never answers.
+            return "onprem-not-implemented"
+        return "deterministic-offline-stub"
 
     @property
     def profile_choice(self) -> ProfileChoice:

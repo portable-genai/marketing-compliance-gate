@@ -290,6 +290,8 @@ def healthz() -> HealthModel:
     return HealthModel(
         status="ok",
         profile=settings.profile,
+        runtime=settings.runtime,
+        generator_model=settings.generator_model,
         market=settings.market,
         vertical=settings.vertical,
     )
