@@ -116,10 +116,3 @@ demo-out/
 .cache/
 tmp/
 scratch/
-
-# Emitted by `next dev` via node_modules/next/dist/server/lib/generate-agent-files.js.
-# Generated, not authored: a rewritten copy of the Next package guidance, pointing into the
-# ignored node_modules. Committing it would freeze version-coupled text and reference a path
-# absent from a fresh clone. Ignored rather than deleted because next re-creates both.
-ui/AGENTS.md
-ui/CLAUDE.md
