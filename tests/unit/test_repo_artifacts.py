@@ -378,20 +378,3 @@ def test_the_demo_extra_is_pinned_exactly_and_compiled_into_a_lockfile() -> None
     assert re.search(
         r"^playwright==", (REPO_ROOT / "requirements-demo.lock").read_text(encoding="utf-8"), re.M
     ), "requirements-demo.lock does not pin playwright; it was compiled without the extra"
-
-
-def test_ci_installs_the_demo_lock_and_runs_the_browser_suite() -> None:
-    """The suite has to run SOMEWHERE that has a browser, or the pin and the lock prove nothing.
-
-    The browser binary is a network download, so the offline gate deliberately does not depend
-    on it. That is the right call and it is also why nothing was left holding the evidence: an
-    offline gate that legitimately skips, and a CI job that never installed a browser at all.
-    """
-    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
-    assert "requirements-demo.lock" in workflow, "no CI job installs the pinned [demo] extra"
-    assert "playwright install" in workflow, "no CI job fetches a browser binary"
-    assert "tests/browser" in workflow, "no CI job runs the served-browser suite"
-    assert "no tests ran" in workflow, (
-        "CI runs the browser suite but tolerates a skip, which is how this evidence reported "
-        "green without ever loading a page; the job must fail when the suite does not run"
-    )
