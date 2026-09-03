@@ -43,7 +43,7 @@ the rule engine.
 |---|---|---|
 | `RuleProviderPort` | `rule_set`, `search` | Gemini API File Search over the rule KB |
 | `EvidenceStorePort` | `list_for_asset`, `get`, `put` | Firestore, in the market's residency region |
-| `LlmPort` | `generate`, `classify` | Gemini (`gemini-3.5-flash`, `gemini-3.1-flash-lite`) |
+| `LlmPort` | `generate`, `classify` | Gemini (`gemini-3.5-flash`, `gemini-3.5-flash`) |
 | `GuardrailPort` | `screen` | Model Armor |
 | `AuditSinkPort` | `record` | Cloud Logging locked WORM bucket |
 | `ObservabilityTracerPort` | `span`, `record_token_usage` | Cloud Trace via OpenTelemetry |

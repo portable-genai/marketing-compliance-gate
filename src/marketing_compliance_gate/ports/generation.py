@@ -1,7 +1,7 @@
 """LlmPort — LLM text/reasoning for narrating the compliance findings.
 
 Primary GCP adapter: Gemini models on the Gemini Enterprise Agent Platform
-(``gemini-3.5-flash`` for narration, ``gemini-3.1-flash-lite`` for triage). The LLM only
+(``gemini-3.5-flash`` for narration, ``gemini-3.5-flash`` for triage). The LLM only
 narrates the already-decided findings of the deterministic rule engine; it never decides
 whether a rule passes, the severity, or the review outcome.
 """
