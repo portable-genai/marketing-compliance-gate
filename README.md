@@ -1,4 +1,4 @@
-# Mkt6 Marketing Compliance and Brand Governance (`marketing-compliance-gate`)
+# `marketing-compliance-gate` Marketing Compliance and Brand Governance (`marketing-compliance-gate`)
 
 **Industries:** Banking, Retail & e-commerce, Insurance, Pharma (DTC advertising), Telecom, Gambling
 
@@ -115,7 +115,7 @@ src/marketing_compliance_gate/
   api/               thin FastAPI boundary (port 8105)
   cli/               the `mkt-gov` Typer CLI
 config/settings.yaml profile, vertical, market, per-market regions, port -> adapter bindings
-eval/                the Hrz4 offline promotion gate + golden review and green-claim
+eval/                the `model-quality-gate` offline promotion gate + golden review and green-claim
                      datasets + rubrics
 scripts/             offline demo, static HTML renderer, presenter demo server
 ui/                  thin Next.js console (compiles with `npm run build`)
@@ -127,14 +127,14 @@ ui/                  thin Next.js console (compiles with `npm run build`)
 substantiation evidence), `ConsentStorePort` (the tenant-scoped consent and preference
 store), `LlmPort`, `GuardrailPort`, `AuditSinkPort`, `ObservabilityTracerPort`,
 `EvaluationGatePort`, `AgentRegistryPort`, `ToolCatalogPort`, `IdentityPort`
-(server-verified end-user identity), `ReviewRouterPort` (the Hrz7 hand-off).
+(server-verified end-user identity), `ReviewRouterPort` (the `human-review-console` hand-off).
 The contract test proves the `local` and `onprem` families satisfy every Protocol with no
 Google Cloud SDK installed, and that the port map and the settings bindings cannot drift
 apart.
 
 ## The green-claims gate (anti-greenwashing)
 
-Environmental claims are the highest-exposure copy a bank or retailer publishes, so Mkt6
+Environmental claims are the highest-exposure copy a bank or retailer publishes, so `marketing-compliance-gate`
 treats them as their own gate:
 
 - **Green-claim rules** are a `RuleKind.GREEN_CLAIM` set in the jurisdiction rule pack
@@ -163,7 +163,7 @@ GET  /v1/evidence/{id}       -> one record; another tenant's record is 403
 
 ## The consent and preference store
 
-Mkt6 already decided whether an ASSET carries the marketing permission its market requires
+`marketing-compliance-gate` already decided whether an ASSET carries the marketing permission its market requires
 (a `CONSENT`-kind rule with the `CONSENT_REQUIRED` check). The consent and preference store
 answers the other half: may we contact THIS data subject, for THIS purpose, on THIS channel,
 right now? It is built here rather than in a separate service because the two halves share
@@ -188,7 +188,7 @@ the rule engine and the rule citations.
   immediately: those only ever narrow what may be done to a person. A grant captured with
   proof (an explicit or soft opt-in, a named source, a locator for the captured statement) is
   stored granted. A grant asserted with none of that is stored pending review, grants nothing,
-  and is routed to the Hrz7 maker-checker console (rule R8) until a checker confirms it.
+  and is routed to the `human-review-console` maker-checker console (rule R8) until a checker confirms it.
 
 ```
 POST /v1/consent/decision                  -> the deterministic, cited decision
@@ -204,12 +204,12 @@ POST /v1/service/consent/sends             -> record a contact, so the cap count
 
 The `/v1/service/...` pair authenticates the CALLING SERVICE rather than an end user, which
 is the only way a proactive outreach system with no user in the loop can ask at all, so those
-two take the tenant in the body. That is the same trust model Hrz7's own service intake uses.
+two take the tenant in the body. That is the same trust model `human-review-console`'s own service intake uses.
 Clients talk to them through
 [`consent-preference-kit`](https://github.com/portable-genai/consent-preference-kit).
 In `gcp`, the caller presents a short-lived Google-signed ID token for the reviewed
 `MKT6_S2S_AUDIENCE`; the verifier accepts only the exact service-account emails in
-`MKT6_S2S_ALLOWED_CALLERS`. Terraform configures that custom audience, grants only Mkt5's
+`MKT6_S2S_ALLOWED_CALLERS`. Terraform configures that custom audience, grants only `next-best-action`'s
 Workload Identity `roles/run.invoker`, and injects the same audience/caller policy into the
 application. Local remains a zero-cloud, shared-secret-capable contract test path; a static
 bearer is never placed in managed Terraform state.

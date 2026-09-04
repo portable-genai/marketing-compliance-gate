@@ -1,4 +1,4 @@
-# A4 model-risk rubric — green-claim substantiation accuracy (Mkt6).
+# A4 model-risk rubric — green-claim substantiation accuracy (marketing-compliance-gate).
 #
 # The gate decides whether an environmental claim may be published. Scoring it against the
 # product's own verdict would be circular, so this metric compares the verdict to the golden

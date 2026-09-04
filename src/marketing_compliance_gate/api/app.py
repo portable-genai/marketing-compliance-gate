@@ -303,7 +303,7 @@ def healthz() -> HealthModel:
     tags=["governance"],
 )
 def agent_card() -> AgentCardModel:
-    """Serve the A2A AgentCard for this agent (Hrz3 discovery, rule R4).
+    """Serve the A2A AgentCard for this agent (agent-registry discovery, rule R4).
 
     Pure and identity-agnostic: the card advertises the agent's governed skills so a peer
     agent or the registry sees one capability surface. Built from ``agent.agent_card`` with no
@@ -493,7 +493,7 @@ def put_consent_record(body: ConsentRecordModel, principal: CurrentPrincipal) ->
     """Store one consent record under the verified tenant.
 
     A grant the caller cannot evidence is stored pending a checker's confirmation and routed
-    to Hrz7; it grants nothing until confirmed. Withdrawals apply immediately.
+    to human-review-console; it grants nothing until confirmed. Withdrawals apply immediately.
     """
     try:
         record = ConsentRecord(
@@ -589,7 +589,8 @@ def put_channel_preference(body: ChannelPreferenceModel, principal: CurrentPrinc
 # The routes above authenticate an END USER and take the tenant from the verified principal.
 # These two authenticate the CALLING SERVICE instead, which is the only way a proactive
 # outreach system with no user in the loop can ask the question at all, and they therefore
-# accept the tenant in the body. That is the same trust model Hrz7's own service intake uses:
+# accept the tenant in the body. That is the same trust model human-review-console's own service
+# intake uses:
 # the calling service is the trust anchor, and per-hop OAuth2 token exchange (on-behalf-of) is
 # the deferred next layer. The scheme is chosen by the EXPOSURE profile, so a run that never
 # chose a profile gets no scheme and is refused rather than falling into the loopback

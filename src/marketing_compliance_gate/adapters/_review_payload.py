@@ -1,11 +1,12 @@
 """Shared conversion from an escalated compliance review to an ``review-kit`` payload.
 
-Lives in the adapter layer (not the pure domain) because it depends on the kit. Mkt6's canonical
-consent authority does hold subject identifiers, so the shared Hrz7 sink is covered by the same
-versioned SG, JP and AU ``pii-kit`` as the offline privacy gate. Descriptor, summary and citation
-snippets are scrubbed before they leave the process, and Hrz7 redacts again before its own audit
-write. The maker and tenant are asserted here and trusted by Hrz7 because this is an authenticated
-S2S caller (per-hop OBO is the deferred next layer).
+Lives in the adapter layer (not the pure domain) because it depends on the kit.
+marketing-compliance-gate's canonical consent authority does hold subject identifiers, so the shared
+human-review-console sink is covered by the same versioned SG, JP and AU ``pii-kit`` as the offline
+privacy gate. Descriptor, summary and citation snippets are scrubbed before they leave the process,
+and human-review-console redacts again before its own audit write. The maker and tenant are asserted
+here and trusted by human-review-console because this is an authenticated S2S caller (per-hop OBO is
+the deferred next layer).
 """
 
 from __future__ import annotations
@@ -87,7 +88,9 @@ def _kit_citations(item: Review | SubstantiationAssessment) -> tuple[KitCitation
 
 
 def review_to_kit_review(review: Review, *, maker: str, tenant: str = "") -> KitReview:
-    """Build the kit review a producer submits to Hrz7 when a compliance review escalates."""
+    """Build the kit review a producer submits to human-review-console when a compliance review
+    escalates.
+    """
     descriptor = (
         f"Marketing compliance review of {review.asset_type.value} asset {review.asset_id} "
         f"(market={review.market.value}, vertical={review.vertical.value})"
@@ -120,7 +123,9 @@ _ASSESSMENT_FLOOR: Severity = Severity.HIGH
 def assessment_to_kit_review(
     assessment: SubstantiationAssessment, *, maker: str, tenant: str = ""
 ) -> KitReview:
-    """Build the kit review a producer submits to Hrz7 when a green claim needs sign-off."""
+    """Build the kit review a producer submits to human-review-console when a green claim needs
+    sign-off.
+    """
     descriptor = (
         f"Green-claim substantiation of asset {assessment.asset_id} "
         f"(market={assessment.market.value}, vertical={assessment.vertical.value}, "

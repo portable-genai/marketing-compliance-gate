@@ -1,9 +1,10 @@
-"""A2A registry adapter (AgentRegistryPort): agent discovery and governance for Mkt6 (A3).
+"""A2A registry adapter (AgentRegistryPort): agent discovery and governance for
+marketing-compliance-gate (A3).
 
 Backs the domain ``AgentRegistryPort`` with an in-process, **A2A v1.0**-style registry of
-:class:`AgentCard` objects. In a standalone deployment Mkt6 registers its own card here and
-can serve it at the well-known A2A discovery path; inside the full platform the ``platform``
-profile swaps this for a thin client to the shared agent registry.
+:class:`AgentCard` objects. In a standalone deployment marketing-compliance-gate registers its own
+card here and can serve it at the well-known A2A discovery path; inside the full platform the
+``platform`` profile swaps this for a thin client to the shared agent registry.
 
 A2A discovery contract: an agent publishes its capabilities as an **AgentCard** served at
 ``/.well-known/agent-card.json``; peers fetch that card to learn the agent's skills,
@@ -20,21 +21,23 @@ from ...domain.models import AgentCard, AgentSkill
 # The A2A well-known discovery path for an agent's card.
 AGENT_CARD_PATH = "/.well-known/agent-card.json"
 
-# Mkt6's own skills, surfaced on its AgentCard so peers / the registry can discover the
+# marketing-compliance-gate's own skills, surfaced on its AgentCard so peers / the registry can
+# discover the
 # governed compliance-governance capabilities the system offers (generic across verticals).
 #
 # **This list used to carry a second skill, and it contradicted the card actually served.**
 # ``approve_review`` ("Maker-checker approval") was advertised here while
 # ``agent/agent_card.py``, which is what ``GET /.well-known/agent-card.json`` returns, declares
 # the maker skill only and states that approval "is deliberately not advertised as an agent
-# skill". So a peer discovering Mkt6 through the registry was told it could have a review
+# skill". So a peer discovering marketing-compliance-gate through the registry was told it could
+# have a review
 # approved, and a peer reading the served card was told it could not, from one repository. The
 # route's own docstring claimed a peer and the registry "sees one capability surface"; they did
 # not.
 #
 # It is gone for the reason the served card already gave. Approval IS the four-eyes control:
 # advertising it to a peer AGENT offers the checker's half to a caller that is not a human, and
-# rule R8 already routes an escalated review to the Hrz7 console, which resolves a real
+# rule R8 already routes an escalated review to the human-review-console, which resolves a real
 # principal before anyone disposes. The same declaration was removed from the MCP catalog in
 # the same change, so all three surfaces now agree.
 #
@@ -60,7 +63,8 @@ class A2ARegistryAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._cards: dict[str, AgentCard] = {}
-        # Seed the registry with Mkt6's own card so a standalone deployment is discoverable.
+        # Seed the registry with marketing-compliance-gate's own card so a standalone deployment is
+        # discoverable.
         self.register(self._self_card())
 
     # ------------------------------------------------------------------ #
@@ -79,7 +83,9 @@ class A2ARegistryAdapter:
     # A2A discovery helper
     # ------------------------------------------------------------------ #
     def agent_card_dict(self, name: str | None = None) -> dict:
-        """Return the ``/.well-known/agent-card.json`` body for ``name`` (default: Mkt6's)."""
+        """Return the ``/.well-known/agent-card.json`` body for ``name`` (default:
+        marketing-compliance-gate's).
+        """
         card = self.get(name) if name else self._cards.get(self._self_name())
         if card is None:
             raise KeyError(f"No AgentCard registered for '{name}'.")

@@ -1,10 +1,10 @@
 """ConsentStorePort — the tenant-scoped consent and preference store.
 
-The catalog's consent and preference store lives here, inside Mkt6, because Mkt6 already
-models consent (the ``CONSENT``-kind rule and its ``CONSENT_REQUIRED`` check) and is already
-the mandatory dependency of the proactive-outreach system that consumes it. This port is the
-hexagon boundary to wherever a subject's consent records, channel preferences, frequency
-caps, suppression entries and recorded sends actually live.
+The catalog's consent and preference store lives here, inside marketing-compliance-gate, because
+marketing-compliance-gate already models consent (the ``CONSENT``-kind rule and its
+``CONSENT_REQUIRED`` check) and is already the mandatory dependency of the proactive-outreach system
+that consumes it. This port is the hexagon boundary to wherever a subject's consent records, channel
+preferences, frequency caps, suppression entries and recorded sends actually live.
 
 The adapter family deliberately MIRRORS the substantiation
 :mod:`~marketing_compliance_gate.ports.evidence` store, method for method and posture for

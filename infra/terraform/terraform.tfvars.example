@@ -1,4 +1,4 @@
-# terraform.tfvars.example — concrete sample values for an APAC-resident Mkt6 deploy.
+# terraform.tfvars.example — concrete sample values for an APAC-resident marketing-compliance-gate deploy.
 #
 # Copy to terraform.tfvars and fill in your own ids. Do NOT commit terraform.tfvars.
 # Region defaults to Singapore (asia-southeast1); set asia-northeast1 (JP) or
@@ -20,8 +20,8 @@ access_policy_id = "987654321098"
 # Cloud Run image (Artifact Registry, in the residency region).
 container_image = "asia-southeast1-docker.pkg.dev/acme-mkt-governance-sg-prod/mkt/marketing-compliance-gate@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-# Managed Mkt5 -> Mkt6 consent hop. The same audience is passed to Mkt5 as its
-# consent_store_audience; only this exact Mkt5 Workload Identity may invoke the service.
+# Managed next-best-action -> marketing-compliance-gate consent hop. The same audience is passed to next-best-action as its
+# consent_store_audience; only this exact next-best-action Workload Identity may invoke the service.
 s2s_audience               = "https://mkt6-consent.internal.example"
 mkt5_caller_service_account = "mkt-nba-run@acme-nba-sg-prod.iam.gserviceaccount.com"
 
@@ -31,7 +31,7 @@ shared_vpc_network    = "projects/acme-network-sg-prod/global/networks/mkt-prod"
 shared_vpc_subnetwork = "projects/acme-network-sg-prod/regions/asia-southeast1/subnetworks/cloud-run-mkt"
 
 # One regular sovereignty perimeter contains the Shared VPC host and BOTH service projects.
-# Mkt6 is the sole owner in the reference topology; Mkt5 sets manage... = false. Project
+# marketing-compliance-gate is the sole owner in the reference topology; next-best-action sets manage... = false. Project
 # NUMBERS are not project ids. Start in DRY-RUN and promote only after reviewing denials.
 enable_vpc_sc                   = true
 manage_shared_vpc_sc_perimeter = true

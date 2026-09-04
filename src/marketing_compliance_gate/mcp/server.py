@@ -1,4 +1,4 @@
-"""Serve the governed tool catalog Mkt6 already declares, over MCP 2026-07-28.
+"""Serve the governed tool catalog marketing-compliance-gate already declares, over MCP 2026-07-28.
 
 The catalog declared three governed tools and served none of them. This supplies the callables
 that answer the surviving declarations and declares nothing new;
@@ -10,7 +10,7 @@ start-up, which is what turns a declaration into a promise something has to keep
 symptom; the cause is that approval IS the four-eyes control, and this repository had already
 decided twice in writing that it is not a tool. Serving it on stdio, which verifies no human,
 would have handed an unauthenticated caller the checker's half of a maker-checker gate. Rule R8
-routes an escalated review to the Hrz7 console, which resolves a real principal first. The
+routes an escalated review to the human-review-console, which resolves a real principal first. The
 reasoning is kept where the declaration was, in ``adapters/gcp/mcp_tool_catalog.py``.
 
 **Both surviving tools take the (market, vertical) scope, and neither invents one.** The
@@ -88,7 +88,9 @@ def build_handlers(actor: str, container: Container | None = None) -> dict[str, 
 
 
 def build_server(actor: str, *, with_audit_tools: bool = True) -> Any:
-    """Build the MCP server for Mkt6's catalog, refusing on any catalog/handler mismatch."""
+    """Build the MCP server for marketing-compliance-gate's catalog, refusing on any catalog/handler
+    mismatch.
+    """
     container = build_container()
     return mcpserve.build_server(
         name="marketing-compliance-gate",

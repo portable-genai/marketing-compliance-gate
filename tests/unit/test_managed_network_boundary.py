@@ -1,4 +1,6 @@
-"""Static contracts for Mkt6's internal Cloud Run and shared perimeter boundary."""
+"""Static contracts for marketing-compliance-gate's internal Cloud Run and shared perimeter
+boundary.
+"""
 
 from pathlib import Path
 

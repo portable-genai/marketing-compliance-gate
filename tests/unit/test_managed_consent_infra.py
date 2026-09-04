@@ -1,4 +1,4 @@
-"""Mkt6's Cloud Run and application gates share one reviewed OIDC contract."""
+"""marketing-compliance-gate's Cloud Run and application gates share one reviewed OIDC contract."""
 
 from pathlib import Path
 

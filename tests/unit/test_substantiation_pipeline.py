@@ -1,10 +1,9 @@
 """The green-claims gate end to end over the offline local stack.
 
-Covers the orchestration promises rather than the arithmetic (that is
-``test_coverage_engine.py``): that the pack's rules are selected and evaluated, that the
-assessment is cited, that the LLM cannot touch a verdict or a coverage number, that every
-green claim escalates to a human and is routed to Hrz7 (rule R8), and that the whole thing
-is written to the audit log.
+Covers the orchestration promises rather than the arithmetic (that is ``test_coverage_engine.py``):
+that the pack's rules are selected and evaluated, that the assessment is cited, that the LLM cannot
+touch a verdict or a coverage number, that every green claim escalates to a human and is routed to
+human-review-console (rule R8), and that the whole thing is written to the audit log.
 """
 
 from __future__ import annotations
@@ -186,7 +185,7 @@ def test_the_assessment_is_audited_and_routed_to_hrz7(local_container: Container
     assert events, "the assessment must be written to the audit log"
     assert events[-1]["decision"] == "escalated"
     routed = local_container.review_router.outbox.pending()
-    assert routed, "an escalated green claim must be routed to the Hrz7 console (R8)"
+    assert routed, "an escalated green claim must be routed to the human-review-console (R8)"
     assert routed[0].review.action == "green_claim_substantiation"
 
 

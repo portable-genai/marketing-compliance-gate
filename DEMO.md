@@ -1,4 +1,4 @@
-# DEMO: Mkt6 Marketing Compliance and Brand Governance
+# DEMO: `marketing-compliance-gate` Marketing Compliance and Brand Governance
 
 Two ways to demo: a fully offline local demo (no cloud, no keys) and a GCP demo (the
 managed Gemini Enterprise Agent Platform stack). Both review obviously-fictional synthetic
@@ -133,7 +133,7 @@ same-origin, set `NEXT_PUBLIC_BASE_PATH` (reverse-proxy sub-path) and `NEXT_PUBL
 
 The same code, the `gcp` profile: the rule KB is **Gemini API File Search**, narration is
 **Gemini**, safety is **Model Armor**, audit is a **Cloud Logging WORM** bucket, tracing is
-**Cloud Trace**, and the Hrz4 gate is the **Gen AI evaluation service**. All Google SDK
+**Cloud Trace**, and the `model-quality-gate` is the **Gen AI evaluation service**. All Google SDK
 imports are lazy, and the residency region is resolved from the active market and validated
 against the per-market allow-list.
 

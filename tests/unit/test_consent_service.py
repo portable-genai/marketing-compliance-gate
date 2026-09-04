@@ -52,7 +52,9 @@ class _CapturingAudit:
 
 
 class _RecordingRouter:
-    """Stands in for the Hrz7 hand-off so the escalation is observable in a unit test."""
+    """Stands in for the human-review-console hand-off so the escalation is observable in a unit
+    test.
+    """
 
     def __init__(self) -> None:
         self.routed: list[tuple] = []

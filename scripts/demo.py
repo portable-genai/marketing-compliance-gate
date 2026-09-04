@@ -144,7 +144,7 @@ def _settings() -> Settings:
 
 
 def _service(container: Container):
-    """Use the production composition root, including canonical Hrz7 routing."""
+    """Use the production composition root, including canonical human-review-console routing."""
     return make_review_service(container)
 
 

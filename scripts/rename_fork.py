@@ -14,7 +14,7 @@ asks before writing (unless ``--yes``), and by default leaves docs prose alone (
     python scripts/rename_fork.py --package acme_ad_review --cli acme-adrev \
         --env-prefix ACME --resource acme-ad-review --yes
 
-For Mkt6 the distribution name and the resource-id stem are the SAME string
+For marketing-compliance-gate the distribution name and the resource-id stem are the SAME string
 (``marketing-compliance-gate``), so ``--dist`` defaults to ``--resource`` rather than a
 ``doc-``/``mkt-`` prefixing rule. Pass ``--dist`` explicitly only if your fork wants a
 distribution name that differs from its resource-id stem.
@@ -89,7 +89,7 @@ def _iter_files(include_docs: bool):
 
 def _replacements(args: argparse.Namespace) -> list[tuple[str, str]]:
     env_prefix = args.env_prefix.rstrip("_").upper() + "_"
-    # For Mkt6 the distribution name IS the resource stem, so --dist defaults to --resource
+    # For marketing-compliance-gate the distribution name IS the resource stem, so --dist defaults to --resource
     # (not a prefixing rule). Order matters: replace the longer, more specific strings
     # first.
     # The distribution name is the same token as the resource name, so replacing it bare

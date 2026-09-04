@@ -8,7 +8,7 @@
 #   Auditability / retention: `retention_days` is a deliberate variable because the WORM
 #     bucket lock is irreversible (see logging_worm.tf).
 #
-# Mkt6 is generic and APAC: JP -> asia-northeast1, AU -> australia-southeast1,
+# marketing-compliance-gate is generic and APAC: JP -> asia-northeast1, AU -> australia-southeast1,
 # SG -> asia-southeast1. The default is Singapore (asia-southeast1) per config/settings.yaml.
 
 variable "project_id" {
@@ -18,7 +18,7 @@ variable "project_id" {
 
 variable "region" {
   description = <<-EOT
-    Deployment region. Must be one of Mkt6's in-country residency regions (SPEC §2):
+    Deployment region. Must be one of marketing-compliance-gate's in-country residency regions (SPEC §2):
     asia-southeast1 (SG), asia-northeast1 (JP) or australia-southeast1 (AU).
     Validated to fail fast so the stack can never be pointed off-region. Default SG.
   EOT
@@ -30,7 +30,7 @@ variable "region" {
       ["asia-southeast1", "asia-northeast1", "australia-southeast1"],
       var.region,
     )
-    error_message = "Mkt6 is APAC-resident: region must be asia-southeast1 (SG), asia-northeast1 (JP) or australia-southeast1 (AU)."
+    error_message = "marketing-compliance-gate is APAC-resident: region must be asia-southeast1 (SG), asia-northeast1 (JP) or australia-southeast1 (AU)."
   }
 }
 
@@ -104,7 +104,7 @@ variable "shared_vpc_subnetwork" {
 }
 
 variable "s2s_audience" {
-  description = "Reviewed HTTPS custom audience for Google-signed service ID tokens. Mkt5 must mint for this exact value."
+  description = "Reviewed HTTPS custom audience for Google-signed service ID tokens. next-best-action must mint for this exact value."
   type        = string
 
   validation {
@@ -114,7 +114,7 @@ variable "s2s_audience" {
 }
 
 variable "mkt5_caller_service_account" {
-  description = "Exact Mkt5 Workload Identity email allowed to invoke the consent service."
+  description = "Exact next-best-action Workload Identity email allowed to invoke the consent service."
   type        = string
 
   validation {
@@ -142,7 +142,7 @@ variable "access_policy_id" {
 
 variable "enable_vpc_sc" {
   description = <<-EOT
-    Participate in the shared Mkt5/Mkt6 VPC Service Controls contract. The designated owner
+    Participate in the shared next-best-action, marketing-compliance-gate VPC Service Controls contract. The designated owner
     creates it in DRY-RUN mode first (vpc_sc.tf, vpc_sc_enforce = false): confirm no legitimate
     path is broken in the dry-run audit logs before enforcing.
   EOT
@@ -152,7 +152,7 @@ variable "enable_vpc_sc" {
 
 variable "manage_shared_vpc_sc_perimeter" {
   description = <<-EOT
-    Whether this module owns the one regular perimeter shared by Mkt5, Mkt6 and their Shared
+    Whether this module owns the one regular perimeter shared by next-best-action, marketing-compliance-gate and their Shared
     VPC host project. Exactly one stack may own it. The governance stack is the reference
     owner; set false only after moving/importing the perimeter into another Terraform state.
   EOT
@@ -161,7 +161,7 @@ variable "manage_shared_vpc_sc_perimeter" {
 }
 
 variable "shared_vpc_sc_perimeter_name" {
-  description = "Short name of the single regular VPC-SC perimeter shared by Mkt5 and Mkt6."
+  description = "Short name of the single regular VPC-SC perimeter shared by next-best-action and marketing-compliance-gate."
   type        = string
   default     = "mkt_marketing_sg"
 
@@ -172,7 +172,7 @@ variable "shared_vpc_sc_perimeter_name" {
 }
 
 variable "mkt5_project_number" {
-  description = "Numeric project number of the Mkt5 service project; included in the shared perimeter."
+  description = "Numeric project number of the next-best-action service project; included in the shared perimeter."
   type        = string
 
   validation {
@@ -182,7 +182,7 @@ variable "mkt5_project_number" {
 }
 
 variable "mkt6_project_number" {
-  description = "Numeric project number of the Mkt6 service project; included in the shared perimeter."
+  description = "Numeric project number of the marketing-compliance-gate service project; included in the shared perimeter."
   type        = string
 
   validation {

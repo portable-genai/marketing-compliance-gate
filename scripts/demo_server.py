@@ -51,7 +51,7 @@ class DemoSession:
             review = service.review(ReviewRequest(asset=asset), actor="demo")
             self.reviews.append(to_jsonable(review))
         pending = container.review_router.outbox.pending()
-        # Keep the routed Hrz7 maker-checker records themselves, not just their count, so the
+        # Keep the routed human-review-console maker-checker records themselves, not just their count, so the
         # audit page can show what was actually handed to the review console.
         self.routed = [
             {
@@ -89,7 +89,8 @@ class DemoSession:
         return self._inject_controls(r.render_review(data), data)
 
     def render_sources(self) -> str:
-        """The audit page: every rule cited across the demo, and every routed Hrz7 record.
+        """The audit page: every rule cited across the demo, and every routed human-review-console
+        record.
 
         Nothing here is written by hand: the citations are the ones the rule engine attached
         and the records are the ones the router actually placed in the outbox.
@@ -116,7 +117,7 @@ class DemoSession:
                 f"{r._citations(record['citations'], scope='outbox')}</div></div>"
             )
         outbox = r._panel(
-            "Routed to the Hrz7 maker-checker console",
+            "Routed to the human-review-console maker-checker console",
             f"<div data-outbox-count='{len(self.routed)}'>"
             + ("".join(rows) or "<div class='muted'>none</div>")
             + "</div>",
@@ -141,13 +142,15 @@ class DemoSession:
         label = f"{data.get('market')} / {data.get('vertical')} — {data.get('asset_id')}"
         bar = (
             # data-* here is the presenter journey's own evidence: which step the SERVED app
-            # believes it is on, how many there are, and how many reviews it routed to Hrz7.
+            # believes it is on, how many there are, and how many reviews it routed to human-review-console.
             f"<div class='democtl' data-demo='presenter-step' data-step='{self.idx}' "
             f"data-step-count='{len(self.reviews)}' data-routed-count='{self.routed_count}'>"
             f"<span class='lbl'>Step {self.idx + 1}/{len(self.reviews)} — <b>{r.esc(label)}</b></span>"
             f"<span class='spacer'></span>{next_btn}"
-            "<a class='restart' href='/sources' style='text-decoration:none;padding:7px 14px;border-radius:7px'>Sources</a>"
-            "<form method='post' action='/restart'><button class='restart' type='submit'>Restart</button></form>"
+            "<a class='restart' href='/sources' style='text-decoration:none;padding:7px "
+            "14px;border-radius:7px'>Sources</a>"
+            "<form method='post' action='/restart'><button class='restart' "
+            "type='submit'>Restart</button></form>"
             "</div>"
         )
         page_html = page_html.replace("</style>", _CONTROL_CSS + "</style>", 1)

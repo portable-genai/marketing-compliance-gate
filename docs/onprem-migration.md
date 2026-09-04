@@ -1,6 +1,6 @@
 # On-prem migration (exit / portability): General Principle P-12
 
-The whole point of the ports-and-adapters shape is that Mkt6's exit story is **demonstrable,
+The whole point of the ports-and-adapters shape is that `marketing-compliance-gate`'s exit story is **demonstrable,
 not aspirational**. Switching from the managed GCP stack to a sovereign / on-premise stack is a
 one-line profile change (`MKT_GOV_PROFILE=onprem`) plus filling in the adapter bodies. The
 domain core, the services, the API, the CLI and the agent wiring do not change.
@@ -22,12 +22,12 @@ proves the `local` family is a WORKING offline stack implementing the same inter
 
 ## The migration checklist
 
-To run Mkt6 on a sovereign / on-premise platform, implement these adapter bodies (the only
+To run `marketing-compliance-gate` on a sovereign / on-premise platform, implement these adapter bodies (the only
 files that change):
 
 | Port | On-prem file | What to implement |
 |------|--------------|-------------------|
-| `RuleProviderPort` | `onprem/rules.py` | An on-prem governed rule-set store (your File Search / Hrz2 KB equivalent) (R3) |
+| `RuleProviderPort` | `onprem/rules.py` | An on-prem governed rule-set store (your File Search / `enterprise-knowledge-base` equivalent) (R3) |
 | `EvidenceStorePort` | `onprem/evidence.py` | Your on-prem substantiation-evidence store (the document system holding emissions inventories, offset records, test reports and fund disclosures). Keep the tenant semantics: `list_for_asset` MUST filter on the tenant in the store, and `get` stays an unfiltered fetch so the domain owns the 403 |
 | `LlmPort` | `onprem/llm.py` | An on-prem model-serving endpoint (e.g. Gemma on your own serving stack) |
 | `GuardrailPort` | `onprem/guardrail.py` | An on-prem prompt / response screening backend (R1) |

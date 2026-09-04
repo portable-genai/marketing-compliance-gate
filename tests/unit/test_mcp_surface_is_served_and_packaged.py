@@ -104,7 +104,8 @@ def test_the_catalog_declares_no_approval_tool(catalog: McpToolCatalogAdapter) -
     ``approve_review`` was declared in this catalog and could not be served: it took a
     ``review_id`` nothing here resolves. Supplying the store would have been the wrong repair.
     Approval IS the four-eyes control, MCP stdio verifies no human, and rule R8 already routes an
-    escalated review to the Hrz7 console where a real principal is resolved. ``agent/tools.py``
+    escalated review to the human-review-console where a real principal is resolved.
+    ``agent/tools.py``
     excludes it from the ADK surface for exactly this reason, so the ADK and MCP surfaces now
     agree instead of contradicting each other.
 
@@ -117,18 +118,20 @@ def test_the_catalog_declares_no_approval_tool(catalog: McpToolCatalogAdapter) -
 
     assert not offending, (
         f"{offending} would serve the checker half of maker-checker over a transport that "
-        "verifies no human. Approval belongs to the Hrz7 console via rule R8."
+        "verifies no human. Approval belongs to the human-review-console via rule R8."
     )
     assert declared, "a forbidden-substring check over an empty catalog asserts nothing"
 
 
 def test_neither_agent_card_advertises_an_approval_skill(local_settings: Settings) -> None:
-    """Mkt6 publishes TWO A2A cards, and they disagreed about the four-eyes control.
+    """marketing-compliance-gate publishes TWO A2A cards, and they disagreed about the four-eyes
+    control.
 
     ``GET /.well-known/agent-card.json`` serves ``agent.agent_card``, which declares the maker
     skill only and says approval "is deliberately not advertised as an agent skill". The
     registry adapter seeded a DIFFERENT card carrying an extra ``approve_review`` skill named
-    "Maker-checker approval", and that is the card a peer discovering Mkt6 through Hrz3 reads.
+    "Maker-checker approval", and that is the card a peer discovering marketing-compliance-gate
+    through agent-registry reads.
     So one repository told a peer two different things about who may approve, and the route's
     own docstring claimed a peer and the registry "sees one capability surface".
 

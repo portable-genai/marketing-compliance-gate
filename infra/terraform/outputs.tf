@@ -12,7 +12,7 @@ output "region" {
 
 # --------------------------------- Cloud Run -------------------------------- #
 output "service_url" {
-  description = "Base URL of the Mkt6 Cloud Run service."
+  description = "Base URL of the marketing-compliance-gate Cloud Run service."
   value       = google_cloud_run_v2_service.mkt_gov.uri
 }
 
@@ -27,7 +27,7 @@ output "s2s_audience" {
 }
 
 output "mkt5_caller_service_account" {
-  description = "Exact Mkt5 Workload Identity granted invocation and app-level access."
+  description = "Exact next-best-action Workload Identity granted invocation and app-level access."
   value       = var.mkt5_caller_service_account
 }
 

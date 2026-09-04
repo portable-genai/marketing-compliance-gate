@@ -16,12 +16,12 @@ Usage (two terminals)::
     .venv/bin/pip install playwright && .venv/bin/playwright install chromium  # one-time
     .venv/bin/python scripts/demo_playwright.py
 
-Point it at the real Next.js console instead with ``DEMO_URL=http://localhost:3000``
-(then it just opens the console for the presenter; the Next/Restart buttons are specific
-to the demo server, so against the live console use it as a guided narration overlay).
-The green-claims (ex-Esg1) gate and the persona-switched cross-tenant read are console-only
-today (``make run-ui``); this walkthrough covers the four-asset review flow the demo server
-reveals one click at a time.
+Point it at the real Next.js console instead with ``DEMO_URL=http://localhost:3000`` (then it just
+opens the console for the presenter; the Next/Restart buttons are specific to the demo server, so
+against the live console use it as a guided narration overlay). The green-claims
+(ex-esg-disclosure-studio) gate and the persona-switched cross-tenant read are console-only today
+(``make run-ui``); this walkthrough covers the four-asset review flow the demo server reveals one
+click at a time.
 
 Environment overrides:
     DEMO_URL    server base URL (default http://127.0.0.1:8115)

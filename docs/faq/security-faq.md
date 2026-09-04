@@ -19,7 +19,7 @@ the server subject is the audit actor, and the body cannot supply an actor.
 
 ### Is there multi-tenant object-level authorization?
 
-Not needed here, by design. Mkt6 reviews marketer-authored asset copy against a **shared
+Not needed here, by design. `marketing-compliance-gate` reviews marketer-authored asset copy against a **shared
 reference rule set** (per market / vertical) and computes the review on demand; there is no
 per-tenant or per-customer stored resource to authorize and no ACL-filtered retrieval. The
 `Principal` carries `tenant` / `principals` for the audit record, but there is no
@@ -28,7 +28,7 @@ verified principal (never the request body) and tag evidence with the tenant.
 
 ### What about the service-to-service calls in the `platform` profile?
 
-The one real outbound call today (the Hrz4 eval / promotion-gate client,
+The one real outbound call today (the `model-quality-gate` eval / promotion-gate client,
 `adapters/platform/remote_evaluation.py`) is built on the shared `hex-service-kit` /
 `agent-eval-kit` S2S client: it requires an `https://` base URL outside loopback (rejected
 at construction) and attaches a bearer credential. The R8 review-router producer
@@ -72,12 +72,12 @@ The `local` audit store (`LocalAppendOnlyAuditAdapter`) wraps the shared
 `UPDATE` / `DELETE` triggers enforcing append-only, JSONL export / restore, and
 `verify_chain()`. The module docstring states its honest limits (a chain with no external
 anchor cannot alone detect full-file truncation or rewrite). In production the `gcp` profile
-writes to a locked WORM bucket, and the enterprise WORM audit system is the sibling **Hrz5**;
+writes to a locked WORM bucket, and the enterprise WORM audit system is the sibling `agent-observability`;
 this repo does not replace it. Proven by `tests/unit/test_audit_chain.py`.
 
 ### Is customer PII processed?
 
-No. Mkt6 reviews marketer-authored asset copy (campaign / creative / offer text plus
+No. `marketing-compliance-gate` reviews marketer-authored asset copy (campaign / creative / offer text plus
 structured fields) and reference rule text; it does not ingest, index or store customer PII
 or per-customer consent records (`MarketingAsset.granted_consents` is a tuple of
 consent-purpose labels, not customer data). There is therefore no PII de-identification

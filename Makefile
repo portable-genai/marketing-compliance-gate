@@ -1,4 +1,4 @@
-# Mkt6 Marketing Compliance and Brand Governance: developer tasks.
+# marketing-compliance-gate Marketing Compliance and Brand Governance: developer tasks.
 #
 # The gate (lint + format + types + tests + eval) runs on the local profile with the
 # [dev] extra only (no google-cloud-*), matching CI. Override PROFILE=gcp for the managed

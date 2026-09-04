@@ -1,4 +1,4 @@
-# Embedding and identity: client integration guide (Mkt6 marketing-compliance-gate)
+# Embedding and identity: client integration guide (`marketing-compliance-gate` marketing-compliance-gate)
 
 This guide explains how to embed the D6 Marketing Compliance and Brand Governance console
 into a client's existing web app (or run it standalone), and how the backend verifies the

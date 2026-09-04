@@ -1,8 +1,8 @@
-# Runbook: Mkt6 Marketing Compliance and Brand Governance
+# Runbook: `marketing-compliance-gate` Marketing Compliance and Brand Governance
 
-Operational notes for deploying and running Mkt6 on the Gemini Enterprise Agent Platform in a
-residency region (defaults `asia-southeast1`; JP and AU are per-market overrides). Mkt6 is the
-shared marketing maker-checker gate the rest of the marketing tier (Mkt1..Mkt5) routes through
+Operational notes for deploying and running `marketing-compliance-gate` on the Gemini Enterprise Agent Platform in a
+residency region (defaults `asia-southeast1`; JP and AU are per-market overrides). `marketing-compliance-gate` is the
+shared marketing maker-checker gate the rest of the marketing tier (`market-intelligence`..`next-best-action`) routes through
 for P-13 / R7. This is a reference build; adapt it to your own change-management and model-risk
 sign-off before any live use.
 
@@ -41,9 +41,9 @@ separate human **checker** action, so the agent never clears an asset itself.
 ## 2. Deploy (managed stack)
 
 The network platform must first associate both service projects with one existing Shared VPC
-host and provide a `/26` or larger region-local subnet with Private Google Access. Mkt6 owns
+host and provide a `/26` or larger region-local subnet with Private Google Access. `marketing-compliance-gate` owns
 the single regular VPC-SC perimeter in the reference topology; its membership is the host,
-Mkt5 and Mkt6 numeric project numbers. Mkt5 declares the identical inputs but sets
+`next-best-action` and `marketing-compliance-gate` numeric project numbers. `next-best-action` declares the identical inputs but sets
 `manage_shared_vpc_sc_perimeter = false`.
 
 ```bash
@@ -68,17 +68,17 @@ gcloud auth application-default login
 make run-api PROFILE=gcp          # FastAPI on :8105 (front with the platform ingress)
 ```
 
-For Mkt5 consent traffic, pass Mkt6's `service_url` and `s2s_audience` outputs to Mkt5 as
-`consent_store_url` and `consent_store_audience`. Terraform grants only the reviewed Mkt5
+For `next-best-action` consent traffic, pass `marketing-compliance-gate`'s `service_url` and `s2s_audience` outputs to `next-best-action` as
+`consent_store_url` and `consent_store_audience`. Terraform grants only the reviewed `next-best-action`
 runtime service account Cloud Run invoker and injects that same email into
-`MKT6_S2S_ALLOWED_CALLERS`. Mkt5 then mints a short-lived Google ID token through Workload
+`MKT6_S2S_ALLOWED_CALLERS`. `next-best-action` then mints a short-lived Google ID token through Workload
 Identity. A request must pass Cloud Run IAM and the application audience/caller verifier; no
 static bearer is seeded or stored in Terraform state.
 
-Apply Mkt6 first with `vpc_sc_enforce = false`, then Mkt5. Both revisions use Direct VPC
-egress with `ALL_TRAFFIC`; Mkt6 ingress is fixed internal-only. Verify an authenticated Mkt5
-request succeeds and a direct internet request to Mkt6 fails before promoting the owner to
-enforced VPC-SC. Do not use an external custom domain for Mkt5's consent URL; use the default
+Apply `marketing-compliance-gate` first with `vpc_sc_enforce = false`, then `next-best-action`. Both revisions use Direct VPC
+egress with `ALL_TRAFFIC`; `marketing-compliance-gate` ingress is fixed internal-only. Verify an authenticated `next-best-action`
+request succeeds and a direct internet request to `marketing-compliance-gate` fails before promoting the owner to
+enforced VPC-SC. Do not use an external custom domain for `next-best-action`'s consent URL; use the default
 `run.app` output over the Shared VPC path.
 
 For a quick project-scoped evaluation WITHOUT org-level prerequisites, set `enable_vpc_sc =
@@ -94,7 +94,7 @@ agent uses its in-process FunctionTools.
 ## 3. Rule sets and grounding
 
 Every review is grounded in the per-market, per-vertical rule set (`RuleProviderPort`). Under
-`gcp` / `platform` the rule set comes from the Hrz2 governed KB (File Search); under `local` it
+`gcp` / `platform` the rule set comes from the `enterprise-knowledge-base` governed KB (File Search); under `local` it
 is the bundled fictional rule seed. Keep the rule KB versioned: a review is only as current as
 the rules it fired, and the audit record cites the rule ids so a change is traceable.
 
@@ -167,5 +167,5 @@ remains intact.
 | Guardrail block on a benign asset (HTTP 400) | Model Armor template too strict | Tune the `model_armor` template filter confidence levels |
 | CORS error from the embedded UI | Origin not in the per-tenant allowlist | Add the parent origin to `MKT_GOV_CORS_ORIGINS` (never `*`) |
 | HTTP 503 "refusing to serve the unauthenticated ... posture" | The bound identity adapter does not verify the end user (seeded personas, the on-prem placeholder, or no profile chosen) and the peer is not loopback | Front the service with IAP and set `MKT_GOV_PROFILE=gcp`, or serve the offline demo on loopback only. `MKT_GOV_ALLOW_INSECURE_DEMO=1` accepts the exposure deliberately |
-| Mkt5 is rejected before app verification | Source request did not traverse the Shared VPC | Confirm both service projects are associated with the same host, the subnet has Private Google Access, and Mkt5 uses `ALL_TRAFFIC` Direct VPC egress to this service's `run.app` URL |
-| VPC-SC denies the apply or consent hop | Distinct regular perimeters, missing host membership, or runner outside the boundary | Keep the owner in dry-run and confirm its one perimeter contains Shared VPC host + Mkt5 + Mkt6 before enforcement |
+| `next-best-action` is rejected before app verification | Source request did not traverse the Shared VPC | Confirm both service projects are associated with the same host, the subnet has Private Google Access, and `next-best-action` uses `ALL_TRAFFIC` Direct VPC egress to this service's `run.app` URL |
+| VPC-SC denies the apply or consent hop | Distinct regular perimeters, missing host membership, or runner outside the boundary | Keep the owner in dry-run and confirm its one perimeter contains Shared VPC host + `next-best-action` + `marketing-compliance-gate` before enforcement |

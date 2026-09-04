@@ -1,12 +1,13 @@
 """CoverageEngine — the deterministic green-claim substantiation decision.
 
-The second heart of Mkt6, and the consequential half of the green-claims gate: given the
-marketing copy, the jurisdiction's :class:`~marketing_compliance_gate.domain.models.GreenClaimPack`
-and the substantiation evidence on file, it decides **which environmental claims the asset
-makes** and **whether the evidence on file carries them**. Both the verdict and the coverage
-number are pure code: an LLM may narrate the result for a reviewer, but it never classifies a
-claim, never decides a verdict and never produces the coverage figure. A regulator or an
-internal auditor must be able to re-run this and get the same answer, byte for byte.
+The second heart of marketing-compliance-gate, and the consequential half of the green-claims gate:
+given the marketing copy, the jurisdiction's
+:class:`~marketing_compliance_gate.domain.models.GreenClaimPack` and the substantiation evidence on
+file, it decides **which environmental claims the asset makes** and **whether the evidence on file
+carries them**. Both the verdict and the coverage number are pure code: an LLM may narrate the
+result for a reviewer, but it never classifies a claim, never decides a verdict and never produces
+the coverage figure. A regulator or an internal auditor must be able to re-run this and get the same
+answer, byte for byte.
 
 Purity and determinism
 ----------------------

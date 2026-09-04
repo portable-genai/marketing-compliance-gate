@@ -9,7 +9,7 @@ For an engineering lead forking this repo as their team's base. The step-by-step
 and resource ids in one pass (preview with `--dry-run`, apply with `--yes`). Then recreate
 the venv, `pip install -e ".[dev]"`, and run `make gate`. The script does the mechanical
 rename; the human decisions (region, IdP, rule seed, eval golden set, fixtures) are the
-checklist in `ADOPTING.md`. For Mkt6 the distribution name and the resource stem are the
+checklist in `ADOPTING.md`. For `marketing-compliance-gate` the distribution name and the resource stem are the
 same string, so `--dist` defaults to `--resource`.
 
 ### If several teams fork this, how does each take upstream fixes?

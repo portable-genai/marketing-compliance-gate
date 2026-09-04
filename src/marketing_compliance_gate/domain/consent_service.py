@@ -2,7 +2,7 @@
 
 Wraps the pure :class:`~marketing_compliance_gate.domain.consent.ConsentEngine` in the ports the
 rest of the hexagon provides: the consent store, the market rule provider, the audit sink,
-the tracer, and the Hrz7 review router. It owns no decision logic of its own. Every
+the tracer, and the human-review-console review router. It owns no decision logic of its own. Every
 consequential answer is computed by the engine, in pure code, from a single snapshot at a
 single ``as_of``.
 
@@ -25,14 +25,14 @@ Recording a WITHDRAWAL, a suppression or a channel opt-out takes effect immediat
 no human: those only ever reduce what may be done to a person, so delaying them would be the
 unsafe direction.
 
-Recording a GRANT is the consequential direction, and it is gated by what the caller can
-show. A grant captured with proof (an explicit or soft opt-in, from a named source, carrying
-an ``evidence_ref`` locator for the captured statement) is self-evidencing and is stored
-GRANTED. A grant asserted on a subject's behalf with no such proof is stored
-:attr:`ConsentStatus.PENDING_REVIEW`, which the engine treats as NOT granted, and is routed
-to the Hrz7 maker-checker console. It becomes effective only when a human checker confirms it
-through :meth:`confirm`. Consent that nobody can evidence is never manufactured by this
-service on its own say-so.
+Recording a GRANT is the consequential direction, and it is gated by what the caller can show. A
+grant captured with proof (an explicit or soft opt-in, from a named source, carrying an
+``evidence_ref`` locator for the captured statement) is self-evidencing and is stored GRANTED. A
+grant asserted on a subject's behalf with no such proof is stored
+:attr:`ConsentStatus.PENDING_REVIEW`, which the engine treats as NOT granted, and is routed to the
+human-review-console maker-checker console. It becomes effective only when a human checker confirms
+it through :meth:`confirm`. Consent that nobody can evidence is never manufactured by this service
+on its own say-so.
 
 No model participates in any of this. Pure domain code: no Google Cloud, ADK or FastAPI.
 """
@@ -106,7 +106,8 @@ class ConsentService:
         self._tracer = tracer
         self._audit = audit
         self._engine = engine or ConsentEngine()
-        # Rule R8: an unevidenced grant sets requires_human_review and is handed to the Hrz7
+        # Rule R8: an unevidenced grant sets requires_human_review and is handed to the
+        # human-review-console
         # console rather than terminating in a per-repo boolean. Optional so unit tests and
         # the CLI can omit it; when unset the write still audits ESCALATED and still grants
         # nothing, it is simply not forwarded to a console.
@@ -235,7 +236,8 @@ class ConsentService:
         The submitted ``tenant`` is ignored and replaced with the principal's, so a body
         cannot write into another tenant's store. A grant the caller cannot evidence is
         downgraded to :attr:`ConsentStatus.PENDING_REVIEW` here, before it reaches the store,
-        and routed to Hrz7: the engine will not read it as consent until a checker confirms.
+        and routed to human-review-console: the engine will not read it as consent until a checker
+        confirms.
         """
         tenant = self._tenant_of(principal)
         self._require(record.subject_id.strip(), "a consent record must name a subject")
@@ -416,7 +418,8 @@ class ConsentService:
     # Rule R8 hand-off
     # ------------------------------------------------------------------ #
     def _route(self, record: ConsentRecord, principal: Principal, reason: str) -> None:
-        """Hand an unevidenced grant to the Hrz7 console (best-effort, after the audit write).
+        """Hand an unevidenced grant to the human-review-console (best-effort, after the audit
+        write).
 
         Never fatal: the record is already stored PENDING_REVIEW and already audited, and it
         grants nothing, so a console that is down delays a confirmation rather than opening a

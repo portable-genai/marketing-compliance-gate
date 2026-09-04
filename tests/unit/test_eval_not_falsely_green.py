@@ -99,7 +99,9 @@ def test_consent_privacy_gate_drives_every_derived_sink(market: str) -> None:
     } <= actions
     surfaces = [json.dumps(event, sort_keys=True, default=str) for event in events]
     routed = [json.dumps(entry, sort_keys=True, default=str) for entry in router.outbox.pending()]
-    assert routed, "the unevidenced grant must exercise the outbound Hrz7 review payload"
+    assert routed, (
+        "the unevidenced grant must exercise the outbound human-review-console review payload"
+    )
     assert example.planted_identifier not in "\n".join([*surfaces, *routed])
     assert (
         run_eval.score_consent_pii_safety(

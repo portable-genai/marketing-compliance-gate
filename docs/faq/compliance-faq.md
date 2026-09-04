@@ -6,7 +6,7 @@ and the MAS regulator crosswalk appendix), [`SPEC.md`](../../SPEC.md).
 
 ### Is this making marketing-approval decisions autonomously?
 
-No. Mkt6 **is** the maker-checker gate (P-06). The deterministic rule engine produces a
+No. `marketing-compliance-gate` **is** the maker-checker gate (P-06). The deterministic rule engine produces a
 documented, replayable compliance verdict; a qualified human checker disposes. A non-compliant
 review sets `requires_human_review`, starts with a `PENDING` `ApprovalRecord`, and does not
 execute until a human approves or rejects (`ReviewService.approve`). The agent is the maker
@@ -20,24 +20,24 @@ per-market, per-vertical rule set: SG (ASAS / consumer-protection), AU (ACCC / A
 advertising and fair-trading), JP (fair-trade / premiums-and-representations), across the
 `banking` and `online_retail` verticals. Each rule carries a `Citation` to its authority, so
 a finding is traceable to the rule it fired. The rule set is a versioned reference source
-retrieved from the Hrz2 governed KB (or the local seed offline).
+retrieved from the `enterprise-knowledge-base` governed KB (or the local seed offline).
 
 ### How is customer PII and consent handled?
 
-Mkt6 reviews marketer-authored asset copy and rule text; it does **not** ingest, index or
+`marketing-compliance-gate` reviews marketer-authored asset copy and rule text; it does **not** ingest, index or
 store customer PII or per-customer consent records. `MarketingAsset.granted_consents` is a
 tuple of consent-purpose labels (which permissions the campaign asserts it holds), and the
 rule engine's `ConsentCheck` verifies the asset's asserted consents against what the rule
 requires, it is not a customer-data store. So there is no PII de-identification boundary in
 this repo by design (C2 / C3 / C4 are N-A in [`docs/practices-audit.md`](../practices-audit.md)).
-The runtime guardrail itself is the sibling **Hrz1** gateway, consumed on every review.
+The runtime guardrail itself is the sibling `agent-guardrail-gateway`, consumed on every review.
 
 ### How is the work auditable / reproducible?
 
 Every review and every approval writes an immutable WORM `AuditEvent` with the decision and
 the citation set (P-07). Every finding carries a `Citation` to the rule it fired (P-10). The
 outcome is decided by the deterministic engine, so an auditor can recompute any review from
-the same asset and rule set. The enterprise WORM audit system is **Hrz5**; the in-repo
+the same asset and rule set. The enterprise WORM audit system is `agent-observability`; the in-repo
 hash-chained store is the offline / local stand-in (see [security-faq.md](security-faq.md)
 for its exact tamper-evidence limits).
 
@@ -45,7 +45,7 @@ for its exact tamper-evidence limits).
 
 An offline eval gate (`eval/run_eval.py`, `--mode smoke | gate`) scores finding accuracy,
 review safety and citation accuracy against a golden set, failing the build below threshold
-(P-08); gate mode refuses to run outside `MKT_GOV_PROFILE = platform | gcp`, so Hrz4 owns
+(P-08); gate mode refuses to run outside `MKT_GOV_PROFILE = platform | gcp`, so `model-quality-gate` owns
 promotion while an offline smoke guards every merge. The two strict (0.99) safety metrics are
 built on an **independent golden oracle**, not the product's own output: `review_safety`
 reads the golden `expected_outcome` (so an under-flagging regression, a real violation
@@ -61,8 +61,8 @@ fork must rebuild the golden set for its own markets, or the gate measures the w
 template (advertising / consumer-protection per market, MAS FEAT accountability for the
 maker-checker four-eyes control, MAS TRM for auditability, outsourcing / cloud for residency
 and exit). To add other regulators, copy the appendix table, swap the regulator-reference
-column, and re-review with local counsel, the Mkt6-control column is stable across
-regulators. At scale, the sibling **Rsk1** `compliance-advisory` and its control-mapping
+column, and re-review with local counsel, the `marketing-compliance-gate`-control column is stable across
+regulators. At scale, the sibling `compliance-advisory` and its control-mapping
 module (`domain/control_mapping/`) generate and maintain these crosswalks; a large estate
 should integrate them rather than hand-maintain the table.
 
@@ -80,9 +80,7 @@ one jurisdiction where an obligation bites, and the location Org Policy must be 
 permit the choice. It is recorded in [`COMPLIANCE.md`](../../COMPLIANCE.md) rather than
 absorbed.
 
-The residency-violation CI gate is the sibling **Rsk3**
-`architecture-validator` (`domain/residency/`); the exit / concentration-risk plan is **Rgc9**
-`operational-resilience-mapping` (`domain/concentration_exit/`). This repo enforces residency in
+The residency-violation CI gate is the sibling `architecture-validator` (`domain/residency/`); the exit / concentration-risk plan is `operational-resilience-mapping` (`domain/concentration_exit/`). This repo enforces residency in
 its own infra and is one of the systems those tools reason about.
 
 ### Can we run it against real marketing or customer data today?

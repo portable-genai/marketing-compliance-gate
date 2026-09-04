@@ -5,7 +5,7 @@ LLM, and, importantly, where its responsibilities **stop** and a sibling catalog
 takes over. Cross-references: [`README.md`](../../README.md), [`DEMO.md`](../../DEMO.md),
 [`COMPLIANCE.md`](../../COMPLIANCE.md).
 
-### What does Mkt6 actually produce?
+### What does `marketing-compliance-gate` actually produce?
 
 A cited compliance **Review** of a marketing asset before it runs. From a `MarketingAsset`
 (a Campaign, Creative or Offer, its copy plus structured fields) and the per-market,
@@ -40,26 +40,26 @@ domain logic (the rule engine, the maker-checker gate, the review output). It **
 several cross-cutting concerns owned by sibling platform systems, do not rebuild these in a
 fork:
 
-| Concern | Owned by (catalog id / repo) | Mkt6's role |
+| Concern | Owned by (catalog id / repo) | `marketing-compliance-gate`'s role |
 |---|---|---|
-| Runtime guardrail: prompt-injection / unsafe-output screening | **Hrz1** `agent-guardrail-gateway` | consumes it on every review (input + output, pipeline and model boundary) |
-| Governed rule / knowledge base with citations | **Hrz2** `enterprise-knowledge-base` | retrieves the per-market, per-vertical rule set from it |
-| Agent registry, versioning, discovery | **Hrz3** `agent-registry` | publishes its A2A AgentCard for discovery |
-| AI-quality / eval / model-risk promotion gate | **Hrz4** `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
-| Observability + immutable WORM audit | **Hrz5** `agent-observability` | writes audit events to it; traces spans through it |
-| Human-review & maker-checker console | **Hrz7** human-review console | routes a non-compliant review's escalation to it via `review-kit` |
-| Regulatory Q&A / control checklists | **Rsk1** `compliance-advisory` | consumes it for regulatory compliance checks |
+| Runtime guardrail: prompt-injection / unsafe-output screening | `agent-guardrail-gateway` | consumes it on every review (input + output, pipeline and model boundary) |
+| Governed rule / knowledge base with citations | `enterprise-knowledge-base` | retrieves the per-market, per-vertical rule set from it |
+| Agent registry, versioning, discovery | `agent-registry` | publishes its A2A AgentCard for discovery |
+| AI-quality / eval / model-risk promotion gate | `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
+| Observability + immutable WORM audit | `agent-observability` | writes audit events to it; traces spans through it |
+| Human-review & maker-checker console | `human-review-console` | routes a non-compliant review's escalation to it via `review-kit` |
+| Regulatory Q&A / control checklists | `compliance-advisory` | consumes it for regulatory compliance checks |
 
 So the guardrail, rule KB, audit sink, eval platform and review console are *dependencies*,
 not features of this repo.
 
 ### How does this relate to the other marketing systems in the catalog?
 
-Mkt6 is the marketing tier's **maker-checker gate**. The other marketing systems produce
-customer-facing output and route it through Mkt6 rather than re-implementing the gate:
-**Mkt1** market-intelligence, **Mkt2** campaign-planning, **Mkt3** brand-safe creative
-studio, **Mkt4** performance-marketing-optimisation / attribution, **Mkt5** next-best-action
-recommendations. Mkt6 is the catalog's named enforcer of General Principle P-13 (fair,
+`marketing-compliance-gate` is the marketing tier's **maker-checker gate**. The other marketing systems produce
+customer-facing output and route it through `marketing-compliance-gate` rather than re-implementing the gate:
+`market-intelligence` market-intelligence, `campaign-planner` campaign-planning, `creative-studio` brand-safe creative
+studio, `performance-marketing-optimisation` performance-marketing-optimisation / attribution, `next-best-action` next-best-action
+recommendations. `marketing-compliance-gate` is the catalog's named enforcer of General Principle P-13 (fair,
 consented, compliant marketing) and dependency rule R7 for that tier. Check
 [the organization's repository index](https://github.com/portable-genai) before building a
 review capability that already has a home here.

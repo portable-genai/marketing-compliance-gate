@@ -30,7 +30,8 @@ Escalation (rule R8)
 --------------------
 A green claim never publishes on the agent's say-so. Any assessment that makes a green claim
 at all, or that fails a green-claim rule, sets ``requires_human_review`` and is routed to the
-Hrz7 maker-checker console after the durable audit record; the hand-off is best-effort and
+human-review-console maker-checker console after the durable audit record; the hand-off is
+best-effort and
 never invalidates an already-audited assessment.
 
 Pure domain code: no Google Cloud, ADK or FastAPI imports.
@@ -208,7 +209,8 @@ class SubstantiationService:
             )
             self._guard(narrative, Direction.OUTPUT, actor)
             self._record(assessment, actor)
-            # Rule R8: hand the escalation to Hrz7 AFTER the durable audit record. Routing is
+            # Rule R8: hand the escalation to human-review-console AFTER the durable audit record.
+            # Routing is
             # best effort and must never invalidate an already-audited assessment.
             if self._review_router is not None and assessment.requires_human_review:
                 with contextlib.suppress(Exception):

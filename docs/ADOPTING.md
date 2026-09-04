@@ -70,7 +70,7 @@ pip install -e ".[dev]"
 make gate
 ```
 
-For Mkt6 the distribution name and the resource-id stem are the same string
+For `marketing-compliance-gate` the distribution name and the resource-id stem are the same string
 (`marketing-compliance-gate`), so `--dist` defaults to `--resource`; pass `--dist`
 explicitly only if your fork wants a distribution name that differs from its resource stem.
 Add `--include-docs` to sweep Markdown prose too. The script deliberately does NOT touch the
@@ -116,11 +116,11 @@ human decisions below.
 This repo is one system in a catalog of composable GRC systems. Several concerns it
 *touches* are owned by sibling platform services, and you should integrate rather than
 rebuild them (see [`docs/faq/features-faq.md`](faq/features-faq.md) for the full map): the
-guardrail gateway (Hrz1), the governed rule / knowledge base (Hrz2), the agent registry
-(Hrz3), the AI-quality / eval gate (Hrz4), observability + WORM audit (Hrz5), the
-human-review and maker-checker console escalations route to (Hrz7), and the compliance
-assistant (Rsk1). The `platform` profile's adapters are already thin HTTP clients to those
-services. Mkt6 is itself the marketing tier's maker-checker gate: Mkt1..Mkt5 route their
+guardrail gateway (`agent-guardrail-gateway`), the governed rule / knowledge base (`enterprise-knowledge-base`), the agent registry
+(`agent-registry`), the AI-quality / eval gate (`model-quality-gate`), observability + WORM audit (`agent-observability`), the
+human-review and maker-checker console escalations route to (`human-review-console`), and the compliance
+assistant (`compliance-advisory`). The `platform` profile's adapters are already thin HTTP clients to those
+services. `marketing-compliance-gate` is itself the marketing tier's maker-checker gate: `market-intelligence`..`next-best-action` route their
 customer-facing output through it, so a fork should not re-implement the review gate inside
 another marketing system.
 

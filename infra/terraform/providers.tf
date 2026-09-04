@@ -1,6 +1,6 @@
-# providers.tf — Provider pinning for the Mkt6 Marketing Compliance and Governance deploy.
+# providers.tf — Provider pinning for the marketing-compliance-gate Marketing Compliance and Governance deploy.
 #
-# Control map (Mkt6 has no numbered COMPLIANCE.md; controls are referenced by SPEC concern):
+# Control map (marketing-compliance-gate has no numbered COMPLIANCE.md; controls are referenced by SPEC concern):
 #   Data residency (SPEC §2): every provider call is pinned to a Singapore region,
 #     asia-southeast1 by default. There is no global / multi-region default.
 #   No lock-in (hexagon): Terraform is the only place infra is described; the app talks to

@@ -13,9 +13,9 @@ hosts. It wires together:
 * the reasoning model ``settings.models.reasoning`` (``gemini-3.5-flash``) at ``thinking=high``
   (SPEC §3).
 
-D6 grounds on the per-market rule KB via File Search (Hrz2), not public-web research, so it
-carries no ``google_search`` grounding sub-agent. It exposes only the review (maker) tool;
-approval is a human checker action and is never an agent skill.
+D6 grounds on the per-market rule KB via File Search (enterprise-knowledge-base), not public-web
+research, so it carries no ``google_search`` grounding sub-agent. It exposes only the review (maker)
+tool; approval is a human checker action and is never an agent skill.
 
 ADK convention is honoured two ways: the module exposes a ``root_agent`` attribute (what ADK /
 ``adk web`` / Agent Runtime discover by default) **and** a ``build_root_agent(settings)`` factory

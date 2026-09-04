@@ -1,7 +1,8 @@
-"""Contract test for the platform evaluation adapter (RemoteEvaluationAdapter -> Hrz4).
+"""Contract test for the platform evaluation adapter (RemoteEvaluationAdapter ->
+model-quality-gate).
 
-Proves the thin HTTP client speaks Hrz4's *hardened* AI-quality contract, as enforced by
-the agent-eval-kit ``PromotionGateClient``, which refuses thin evidence:
+Proves the thin HTTP client speaks model-quality-gate's *hardened* AI-quality contract, as enforced
+by the agent-eval-kit ``PromotionGateClient``, which refuses thin evidence:
 
 * ``POST /v1/evaluations`` carries a structured ``target``
   (``{model, prompt_version, dataset_id, system}``), a top-level ``dataset_id`` that
@@ -14,8 +15,8 @@ the agent-eval-kit ``PromotionGateClient``, which refuses thin evidence:
   MRM references). A naked ``{"passed": bool}`` or a contradictory body is refused;
 * a non-2xx response or inconsistent evidence surfaces as ``RemoteEvaluationError``.
 
-Uses ``respx`` to intercept ``httpx`` with no live Hrz4 service — SDK-free, deterministic.
-All identifiers in the fixtures are obviously fictional.
+Uses ``respx`` to intercept ``httpx`` with no live model-quality-gate service — SDK-free,
+deterministic. All identifiers in the fixtures are obviously fictional.
 """
 
 from __future__ import annotations
