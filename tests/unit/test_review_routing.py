@@ -1,11 +1,12 @@
-"""R8 routing: an escalated compliance review is routed to Hrz7 via the shared review-kit.
+"""R8 routing: an escalated compliance review is routed to human-review-console via the shared
+review-kit.
 
-Mkt6 is the marketing maker-checker gate, so every regulated-claim disposition sets
-``requires_human_review`` and rule R8 says it MUST be handed to the Hrz7 console rather than left
-as a boolean. These tests prove the producer half of that loop end to end against the offline local
-router (an in-memory outbox), prove the redact-before-wire boundary so no stray identifier reaches
-the shared console, and prove the dual-control gate on the strongest finding severity. Routing is
-wired ONLY on the review/maker path; the agent never approves.
+marketing-compliance-gate is the marketing maker-checker gate, so every regulated-claim disposition
+sets ``requires_human_review`` and rule R8 says it MUST be handed to the human-review-console rather
+than left as a boolean. These tests prove the producer half of that loop end to end against the
+offline local router (an in-memory outbox), prove the redact-before-wire boundary so no stray
+identifier reaches the shared console, and prove the dual-control gate on the strongest finding
+severity. Routing is wired ONLY on the review/maker path; the agent never approves.
 
 All data here is fictional.
 """
@@ -73,7 +74,9 @@ def test_review_routes_escalated_review_to_outbox(local_container: Container):
     assert review.requires_human_review
 
     pending = router.outbox.pending()
-    assert len(pending) == 1, "the escalated review must be routed to Hrz7 exactly once"
+    assert len(pending) == 1, (
+        "the escalated review must be routed to human-review-console exactly once"
+    )
     kit = pending[0].review
     assert kit.action == f"marketing_compliance_review:{review.asset_type.value}"
     assert kit.case_ref == review.id

@@ -33,7 +33,8 @@ def make_review_service(container: Container | None = None) -> ReviewService:
 
 
 def make_consent_service(container: Container | None = None) -> ConsentService:
-    """Wire the consent and preference store: the store, the market rules, audit, Hrz7.
+    """Wire the consent and preference store: the store, the market rules, audit,
+    human-review-console.
 
     The rule provider is wired in because a consent decision cites the market's own consent
     rules through the SAME deterministic rule engine the asset-review path uses, so a denial

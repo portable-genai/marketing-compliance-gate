@@ -1,4 +1,4 @@
-# Demo scripts - Mkt6 Marketing & Claims Compliance Gate
+# Demo scripts - `marketing-compliance-gate`
 
 All scripts are SDK-free and run against the in-process `local` stack (no Google Cloud,
 no API key). They drive the real D6 services, the review rule engine and the green-claims

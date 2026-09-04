@@ -1,4 +1,4 @@
-# apis.tf — Enable exactly the managed services Mkt6 depends on.
+# apis.tf — Enable exactly the managed services marketing-compliance-gate depends on.
 #
 # Control map (SPEC concern):
 #   Managed-first / minimal surface: only the services the pinned gcp adapter stack
@@ -20,7 +20,7 @@
 
 locals {
   required_services = [
-    # --- Mkt6 adapter-backing services (only what the gcp profile uses) ---
+    # --- marketing-compliance-gate adapter-backing services (only what the gcp profile uses) ---
     "aiplatform.googleapis.com", # Gemini File Search + reasoning/triage + Gen AI eval
     "modelarmor.googleapis.com", # Model Armor guardrail (regional endpoint)
     "logging.googleapis.com",    # Cloud Logging WORM bucket + audit sink

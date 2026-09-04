@@ -87,7 +87,8 @@ class ReviewService:
         self._tracer = tracer
         self._audit = audit
         self._engine = engine or RuleEngine()
-        # Rule R8: when a review requires human review it is routed to the Hrz7 maker-checker
+        # Rule R8: when a review requires human review it is routed to the human-review-console
+        # maker-checker
         # console, not left as a boolean. Optional so unit tests and the CLI can omit it; when
         # unset the escalation still audits ESCALATED, it just is not forwarded to a console.
         # Bound only on this maker (review-producer) path; the agent never gets an approve tool.
@@ -136,7 +137,8 @@ class ReviewService:
             )
             self._guard(summary, Direction.OUTPUT, actor)
             self._record_review(review, actor)
-            # Rule R8: hand an escalated review to the Hrz7 console. Routing is a best-effort
+            # Rule R8: hand an escalated review to the human-review-console. Routing is a
+            # best-effort
             # hand-off after the durable audit ESCALATED record, never fatal to an already-
             # assembled, already-audited review (the outbox path retries).
             if self._review_router is not None and review.requires_human_review:

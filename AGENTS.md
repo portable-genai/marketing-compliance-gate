@@ -7,7 +7,7 @@ here. Read it first. This file carries only what is specific to this one.
 
 ## What this is
 
-Catalog id **Mkt6**. Marketing compliance and brand governance: a deterministic rule engine
+Catalog id `marketing-compliance-gate`. Marketing compliance and brand governance: a deterministic rule engine
 checks a `Campaign`, `Creative` or `Offer` against the per-market, per-vertical advertising,
 consumer-protection and consent rules in force, emits a cited finding per rule, and gates the
 result behind a marketing maker-checker `ApprovalRecord`. A second deterministic engine is the
@@ -20,7 +20,7 @@ green claim is substantiated, or what the coverage figure is.
 
 | | |
 |---|---|
-| Catalog id | `Mkt6` |
+| Catalog id | `marketing-compliance-gate` |
 | Package | `src/marketing_compliance_gate/` |
 | Profile variable | `MKT_GOV_PROFILE` |
 | Adapter families | `gcp`, `local`, `onprem`, `platform` |

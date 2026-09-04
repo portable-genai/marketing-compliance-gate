@@ -164,7 +164,8 @@ def check_served() -> None:
         thread.join(timeout=5)
 
     print(
-        "PASS served: every presenter step, panel hook, live figure and routed Hrz7 record "
+        "PASS served: every presenter step, panel hook, live figure and routed "
+        "human-review-console record "
         "read back over HTTP from the running demo server"
     )
 

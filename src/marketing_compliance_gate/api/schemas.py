@@ -124,7 +124,7 @@ class ServiceConsentDecisionModel(BaseModel):
     """The S2S consent question, asked by a trusted CALLING SERVICE rather than a user.
 
     This is the only consent shape that carries a ``tenant``, and it carries one for the same
-    reason Hrz7's service intake accepts an asserted maker and tenant: the caller is
+    reason human-review-console's service intake accepts an asserted maker and tenant: the caller is
     authenticated as a service, not as an end user, so there is no end-user principal to
     derive a tenant from. Per-hop OAuth2 token exchange (on-behalf-of) is the deferred next
     layer; until then the calling service is the trust anchor on this path. The end-user
@@ -178,7 +178,7 @@ class AgentSkillModel(BaseModel):
 
 
 class AgentCardModel(BaseModel):
-    """A2A AgentCard served at ``/.well-known/agent-card.json`` (Hrz3 discovery shape)."""
+    """A2A AgentCard served at ``/.well-known/agent-card.json`` (agent-registry discovery shape)."""
 
     name: str
     description: str

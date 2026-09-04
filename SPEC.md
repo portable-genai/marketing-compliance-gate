@@ -1,8 +1,8 @@
-# SPEC: Mkt6 Marketing Compliance and Brand Governance
+# SPEC: `marketing-compliance-gate` Marketing Compliance and Brand Governance
 
 ## 1. Purpose and scope
 
-Mkt6 reviews a marketing **asset** (a `Campaign`, `Creative` or `Offer`) against the
+`marketing-compliance-gate` reviews a marketing **asset** (a `Campaign`, `Creative` or `Offer`) against the
 per-market, per-vertical advertising, consumer-protection and consent rules in force, and
 produces a cited **Review** plus a maker-checker **ApprovalRecord**. It also runs the
 **green-claims gate**: for an asset that makes environmental claims it produces a cited
@@ -47,11 +47,11 @@ the rule engine.
 | `GuardrailPort` | `screen` | Model Armor |
 | `AuditSinkPort` | `record` | Cloud Logging locked WORM bucket |
 | `ObservabilityTracerPort` | `span`, `record_token_usage` | Cloud Trace via OpenTelemetry |
-| `EvaluationGatePort` | `evaluate`, `gate` | Gen AI evaluation service (Hrz4) |
-| `AgentRegistryPort` | `register`, `get`, `list` | A2A AgentCard registry (Hrz3) |
+| `EvaluationGatePort` | `evaluate`, `gate` | Gen AI evaluation service (`model-quality-gate`) |
+| `AgentRegistryPort` | `register`, `get`, `list` | A2A AgentCard registry (`agent-registry`) |
 | `ToolCatalogPort` | `list_tools`, `get_tool` | governed MCP tool catalog |
 | `IdentityPort` | `resolve` | IAP-injected signed assertion |
-| `ReviewRouterPort` | `route`, `route_assessment` | Hrz7 review console via `review-kit` |
+| `ReviewRouterPort` | `route`, `route_assessment` | `human-review-console` via `review-kit` |
 
 Every port is a `@runtime_checkable` `Protocol`; adapters need only structural conformance.
 
@@ -61,7 +61,7 @@ start-up if the declared tools and the bound handlers disagree in either directi
 
 It declares the MAKER half only. `approve_review` was declared here and removed: approval IS the
 four-eyes control, this transport verifies no human, and rule R8 already routes an escalated
-review to the Hrz7 console, which resolves a real principal before anyone disposes. The ADK tool
+review to the `human-review-console`, which resolves a real principal before anyone disposes. The ADK tool
 surface and the A2A card exclude it for the same reason, so all three surfaces now agree.
 `market` and `vertical` are required rather than optional on both tools, because
 `RuleProviderPort.search` cannot run without them and the managed adapter keys its per-market
@@ -118,7 +118,7 @@ records a human's terminal decision on a previously-built review and audits it.
 All artifacts serialise to plain JSON via `domain.serialization.to_jsonable` (enums to
 values, datetimes to ISO, dataclasses to dicts).
 
-## 7. Quality gate (Hrz4)
+## 7. Quality gate (`model-quality-gate`)
 
 `eval/run_eval.py` runs the real `ReviewService` over `eval/datasets/golden_reviews.jsonl` and
 the real `SubstantiationService` over `eval/datasets/golden_green_claims.jsonl`, both on the
@@ -132,13 +132,13 @@ overclaim (declaring a claim substantiated where the evidence is expired, stale,
 or absent) scores 0. `agent_eval_kit.assert_each_can_go_red` runs over it, alongside the other
 strict metrics, before the gate scores anything.
 
-On the `platform` profile, `EvaluationGatePort` is a real HTTP client to the shared Hrz4
+On the `platform` profile, `EvaluationGatePort` is a real HTTP client to the shared `model-quality-gate`
 AI-quality service (not a stub): `evaluate` POSTs `/v1/evaluations` and `gate` POSTs
 `/v1/gate`, both with a structured `{target: {model, prompt_version, dataset_id, system},
 dataset_id, bundle: "mkt6-compliance"}` body, and `evaluate` maps the returned `results[]`
 into an `EvalReport`. Metric selection is server-side by the registered bundle name
 `mkt6-compliance`: the client never sends a metric list, so tightening a threshold stays
-Hrz4's concern. The base URL comes from `QUALITY_GATE_URL`.
+`model-quality-gate`'s concern. The base URL comes from `QUALITY_GATE_URL`.
 
 ## 8. The green-claims gate
 
@@ -205,7 +205,7 @@ llm.generate                                 -> narrative (narration only)
 assemble SubstantiationAssessment (cited)
 guardrail.screen(OUTPUT over the narrative)  -> blocked: audit BLOCKED + raise
 audit.record                                 -> Decision.ESCALATED when human review required
-review_router.route_assessment               -> Hrz7 (rule R8), best effort, after the audit
+review_router.route_assessment               -> `human-review-console` (rule R8), best effort, after the audit
 ```
 
 `requires_human_review` is true whenever the asset makes any green claim at all, or fails any

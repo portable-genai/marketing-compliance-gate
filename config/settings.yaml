@@ -182,7 +182,7 @@ adapters:
     platform: marketing_compliance_gate.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     local: marketing_compliance_gate.adapters.local.tool_catalog:LocalToolCatalogAdapter
     onprem: marketing_compliance_gate.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
-  # Rule R8: a non-compliant review (requires_human_review=True) is routed to the Hrz7
+  # Rule R8: a non-compliant review (requires_human_review=True) is routed to the human-review-console
   # Human-Review & Maker-Checker Console via the shared review-kit, not left as a
   # per-repo boolean. Wired ONLY on the review/maker producer path; the agent never approves.
   review_router:

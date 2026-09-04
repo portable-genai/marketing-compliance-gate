@@ -3,7 +3,7 @@
 This builds the agent's discovery card (the same minimal A2A shape the ``agent-registry``
 service stores and serves, SPEC §6). It is published at ``/.well-known/agent-card.json``;
 :func:`agent_card_document` returns the JSON-safe body the API layer serves there, and the
-``platform`` registry adapter registers the same card in Hrz3 (rule R4).
+``platform`` registry adapter registers the same card in agent-registry (rule R4).
 
 The card advertises the skill D6 produces as the **maker** half of the marketing maker-checker
 gate (review_marketing_asset), mirroring the ADK FunctionTool. Approval (the checker half) is a

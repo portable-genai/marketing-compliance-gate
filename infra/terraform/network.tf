@@ -1,7 +1,7 @@
 # network.tf — Existing Shared VPC contract for managed Cloud Run egress.
 #
 # The horizontal network stack owns the network and service-project associations. This module
-# verifies the selected subnet and grants only the Mkt6 Cloud Run service agent permission to
+# verifies the selected subnet and grants only the marketing-compliance-gate Cloud Run service agent permission to
 # discover the host network and consume that subnet. Keeping the association in the network
 # owner's state avoids two Terraform states competing for the Shared VPC lifecycle.
 

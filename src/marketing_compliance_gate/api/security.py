@@ -6,7 +6,7 @@ request-body ``actor``/ACL are ignored entirely: the audit actor flows from here
 the spoofable-identity gap. A failure to resolve a verified principal is a 401.
 
 The IdentityPort is the inner ring of the defense-in-depth PEP (edge IAP/Apigee ->
-Hrz1 guardrail -> this per-backend check); this module is the per-backend ring.
+agent-guardrail-gateway -> this per-backend check); this module is the per-backend ring.
 """
 
 from __future__ import annotations

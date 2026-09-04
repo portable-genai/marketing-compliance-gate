@@ -1,8 +1,8 @@
 """Object-level authorization on green-claim substantiation evidence (fail-closed).
 
-Substantiation evidence is the first genuinely tenant-owned resource Mkt6 stores: a brand's
-emissions inventory, offset retirement records and fund ESG disclosures. So the check that
-matters is not "is the caller authenticated" but "is this record the caller's".
+Substantiation evidence is the first genuinely tenant-owned resource marketing-compliance-gate
+stores: a brand's emissions inventory, offset retirement records and fund ESG disclosures. So the
+check that matters is not "is the caller authenticated" but "is this record the caller's".
 
 These tests pin the whole contract:
 

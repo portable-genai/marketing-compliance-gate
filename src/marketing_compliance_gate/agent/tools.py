@@ -11,7 +11,7 @@ D6 is the marketing maker-checker **gate**. This agent is the **maker**: it expo
 ``review_marketing_asset`` (produce a review). The **checker** half (``ReviewService.approve``)
 is deliberately NOT exposed as a tool, because an agent that could approve its own reviews would
 defeat the four-eyes control. Approval stays a human action (the API's `approve` path / the
-Hrz7 review console).
+human-review-console).
 
 Design notes
 ------------

@@ -1,4 +1,4 @@
-# cloud_run.tf — Cloud Run v2 service running the Mkt6 FastAPI container.
+# cloud_run.tf — Cloud Run v2 service running the marketing-compliance-gate FastAPI container.
 #
 # Control map (SPEC concern):
 #   Residency: the service is pinned to var.region (asia-southeast1 by default); the image
@@ -8,7 +8,7 @@
 #   CMEK: the revision is encrypted with the regional CMEK key (kms.tf).
 #   Controlled ingress: fixed INTERNAL_ONLY — no variable can weaken the perimeter at apply.
 #   Controlled egress: all traffic uses Direct VPC egress over the reviewed Shared VPC. This
-#     is both VPC-SC compliant and reachable from Mkt5 over the same internal network path.
+#     is both VPC-SC compliant and reachable from next-best-action over the same internal network path.
 #   Profile opt-in: MKT_GOV_PROFILE=gcp is set EXPLICITLY here (the app defaults to the
 #     offline `local` profile when unset; prod must opt in to the managed stack).
 #
@@ -33,7 +33,7 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
   project  = var.project_id
 
   # A stable reviewed audience avoids a two-apply dependency on the generated service URI.
-  # Mkt5 mints a Google-signed ID token for this exact value.
+  # next-best-action mints a Google-signed ID token for this exact value.
   custom_audiences = [var.s2s_audience]
 
   # VPC-SC-protected Cloud Run must accept internal sources only. This is intentionally not

@@ -1,6 +1,6 @@
 """The consent and preference domain module — records, grants, preferences, caps, suppression.
 
-Mkt6 already models consent as one aspect of a marketing-compliance review: a
+marketing-compliance-gate already models consent as one aspect of a marketing-compliance review: a
 ``CONSENT``-kind :class:`~marketing_compliance_gate.domain.models.Rule` with the
 :attr:`~marketing_compliance_gate.domain.models.CheckType.CONSENT_REQUIRED` check, evaluated by
 the deterministic :class:`~marketing_compliance_gate.domain.rule_engine.RuleEngine` into a

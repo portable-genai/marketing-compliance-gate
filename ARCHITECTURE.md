@@ -1,8 +1,8 @@
-# ARCHITECTURE: Mkt6 Marketing Compliance and Brand Governance
+# ARCHITECTURE: `marketing-compliance-gate` Marketing Compliance and Brand Governance
 
 ## Hexagonal ports and adapters
 
-Mkt6 is built as a hexagon: a pure-stdlib **domain core** surrounded by typed **ports**, with
+`marketing-compliance-gate` is built as a hexagon: a pure-stdlib **domain core** surrounded by typed **ports**, with
 interchangeable **adapter families** selected by a single profile switch. The domain has
 zero dependency on any framework, SDK or cloud. That is what makes it testable offline,
 portable across vendors, and honest about its boundaries.
@@ -27,7 +27,7 @@ portable across vendors, and honest about its boundaries.
                                              v
        +---------------+----------------+-------------------+-----------------+
        | adapters/gcp  | adapters/local | adapters/platform | adapters/onprem |
-       | (lazy SDK)    | (offline)      | (HTTP to Hrz1..Hrz5)  | (fail-fast stub) |
+       | (lazy SDK)    | (offline)      | (HTTP to `agent-guardrail-gateway`..`agent-observability`)  | (fail-fast stub) |
        +---------------+----------------+-------------------+-----------------+
 ```
 
@@ -37,7 +37,7 @@ portable across vendors, and honest about its boundaries.
 |---|---|---|
 | `gcp` | primary, managed | Gemini API File Search (rule KB), Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval. SDK imports are lazy. |
 | `local` | dev / test / CI default | a WORKING offline stack: a deterministic SQLite FTS5 rule KB seeded per (market, vertical), a deterministic schema-driven LLM narrator, a heuristic guardrail, append-only audit, no-op tracer, in-process registry / tool-catalog, the offline eval gate. SDK-free and seedable. |
-| `platform` | shared-platform reuse | thin HTTP clients to the shared Hrz1 guardrail, Hrz2 KB, Hrz3 registry, Hrz4 eval (a real client: `POST /v1/evaluations` + `/v1/gate`, `mkt6-compliance` bundle), Hrz5 audit. |
+| `platform` | shared-platform reuse | thin HTTP clients to the shared `agent-guardrail-gateway`, `enterprise-knowledge-base`, `agent-registry`, `model-quality-gate` eval (a real client: `POST /v1/evaluations` + `/v1/gate`, `mkt6-compliance` bundle), `agent-observability`. |
 | `onprem` | portability proof | fail-fast `NotImplementedError` stubs satisfying the same Protocols. |
 
 Switching the whole backend is a one-line `profile` change in `config/settings.yaml` (or
@@ -117,8 +117,8 @@ client-asserted value, and there is no verified tenant on that path.
 
 ## The consent and preference store
 
-The store lives inside Mkt6 rather than in a service of its own, and the reason is the rule
-engine. Mkt6 already models consent as a `CONSENT`-kind rule with a `CONSENT_REQUIRED` check,
+The store lives inside `marketing-compliance-gate` rather than in a service of its own, and the reason is the rule
+engine. `marketing-compliance-gate` already models consent as a `CONSENT`-kind rule with a `CONSENT_REQUIRED` check,
 evaluated by the deterministic `RuleEngine` into a `ConsentCheck` carrying the market rule's
 citation. A separate consent service would either duplicate that vocabulary or diverge from
 it, and a consent denial that cited nothing would be worth much less to a compliance officer
@@ -141,7 +141,7 @@ so the audit record says all of why rather than the first why.
 
 The `PENDING_REVIEW` status is what makes the maker-checker gate on grants work without a
 second store. A grant asserted with no captured proof is stored in that state, the engine
-reads it as not granted, and the record is routed to Hrz7 through the same `ReviewRouterPort`
+reads it as not granted, and the record is routed to `human-review-console` through the same `ReviewRouterPort`
 that carries escalated reviews and green-claim assessments. Withdrawals, opt-outs and
 suppressions are never gated: they only ever narrow permission, so delaying them would be the
 unsafe direction.

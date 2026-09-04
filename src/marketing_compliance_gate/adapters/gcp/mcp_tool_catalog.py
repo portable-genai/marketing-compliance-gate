@@ -1,21 +1,22 @@
-"""MCP tool-catalog adapter (ToolCatalogPort), the governed tool surface for Mkt6.
+"""MCP tool-catalog adapter (ToolCatalogPort), the governed tool surface for
+marketing-compliance-gate.
 
-Backs the domain ``ToolCatalogPort`` by exposing Mkt6's governed, least-privilege
-capabilities as :class:`ToolSpec` objects: ``review_asset`` and ``search_rules``. These are
-the tools the agent (or a peer agent) may invoke, each with an explicit JSON input schema so
-access is scoped and auditable (least privilege).
+Backs the domain ``ToolCatalogPort`` by exposing marketing-compliance-gate's governed,
+least-privilege capabilities as :class:`ToolSpec` objects: ``review_asset`` and ``search_rules``.
+These are the tools the agent (or a peer agent) may invoke, each with an explicit JSON input schema
+so access is scoped and auditable (least privilege).
 
-**``approve_review`` was declared here and is deliberately gone.** It took a ``review_id``
-that nothing in this service can resolve, which is how it was found: the catalog had never
-been served, so nothing had ever checked that a declared tool could be answered. Supplying
-the missing store was the wrong repair. Approval IS the four-eyes control, and this
-repository had already decided twice in writing that it is not a tool:
-``agent/tools.py`` excludes it from the ADK surface because "an agent that could approve its
-own reviews would defeat the four-eyes control", and ``domain/services.py`` records that the
-router is "bound only on this maker (review-producer) path; the agent never gets an approve
-tool". Serving it over a transport that verifies no human would have let an unauthenticated
-caller act as the checker. The checker half is Hrz7's: rule R8 routes an escalated review to
-the review console, which resolves a real principal before anyone disposes.
+**``approve_review`` was declared here and is deliberately gone.** It took a ``review_id`` that
+nothing in this service can resolve, which is how it was found: the catalog had never been served,
+so nothing had ever checked that a declared tool could be answered. Supplying the missing store was
+the wrong repair. Approval IS the four-eyes control, and this repository had already decided twice
+in writing that it is not a tool: ``agent/tools.py`` excludes it from the ADK surface because "an
+agent that could approve its own reviews would defeat the four-eyes control", and
+``domain/services.py`` records that the router is "bound only on this maker (review-producer) path;
+the agent never gets an approve tool". Serving it over a transport that verifies no human would have
+let an unauthenticated caller act as the checker. The checker half is human-review-console's: rule
+R8 routes an escalated review to the review console, which resolves a real principal before anyone
+disposes.
 
 So this catalog declares the maker half only, and
 ``tests/unit/test_mcp_surface_is_served_and_packaged.py`` holds it there rather than trusting
@@ -112,7 +113,9 @@ def _build_catalog() -> dict[str, ToolSpec]:
 
 
 class McpToolCatalogAdapter:
-    """The MCP 2026-07-28 catalog of Mkt6's governed tools, served by ``..mcp``."""
+    """The MCP 2026-07-28 catalog of marketing-compliance-gate's governed tools, served by
+    ``..mcp``.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings

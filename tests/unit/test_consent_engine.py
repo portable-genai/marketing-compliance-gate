@@ -332,7 +332,8 @@ def test_an_absent_cap_is_reported_rather_than_silently_unlimited():
 
 
 # --------------------------------------------------------------------------- #
-# Reuse of the EXISTING rule engine (the whole point of building this inside Mkt6)
+# Reuse of the EXISTING rule engine (the whole point of building this inside
+# marketing-compliance-gate)
 # --------------------------------------------------------------------------- #
 def test_market_consent_rules_are_evaluated_by_the_existing_rule_engine():
     """A purpose the market requires but the subject never granted denies, WITH the citation.

@@ -1,4 +1,4 @@
-# iam.tf — Least-privilege runtime service account for the Mkt6 Cloud Run service.
+# iam.tf — Least-privilege runtime service account for the marketing-compliance-gate Cloud Run service.
 #
 # Control map (SPEC concern):
 #   Least privilege: ONE dedicated runtime identity for the serving / API container, granted
@@ -10,7 +10,7 @@
 
 resource "google_service_account" "runtime" {
   account_id   = "mkt-gov-run"
-  display_name = "Mkt6 Marketing Compliance and Governance — Cloud Run runtime"
+  display_name = "marketing-compliance-gate Marketing Compliance and Governance — Cloud Run runtime"
   project      = var.project_id
 
   depends_on = [google_project_service.required]

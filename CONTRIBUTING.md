@@ -1,7 +1,6 @@
-# Contributing to Mkt6 (`marketing-compliance-gate`)
+# Contributing to `marketing-compliance-gate`
 
-This repo follows the catalog's non-negotiable conventions (shared with Rsk1
-`compliance-advisory` and Doc1 `cdd-sow-research`, and the reusable skills in
+This repo follows the catalog's non-negotiable conventions (shared with `compliance-advisory` and `cdd-sow-research`, and the reusable skills in
 `.agents/skills/`). Read these before opening a change.
 
 ## Non-negotiable conventions

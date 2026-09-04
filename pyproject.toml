@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "marketing-compliance-gate"
 version = "0.0.1"
-description = "D6 Marketing Compliance and Brand Governance — a deterministic rule engine that reviews Campaigns, Creatives and Offers for claim, permission, brand and consent compliance against per-market, per-vertical advertising and consumer-protection rules, the marketing maker-checker gate, generic across banking and online retail and the JP/AU/SG markets, built ports-and-adapters on the Gemini Enterprise Agent Platform."
+description = "Marketing Compliance and Brand Governance — a deterministic rule engine that reviews Campaigns, Creatives and Offers for claim, permission, brand and consent compliance against per-market, per-vertical advertising and consumer-protection rules, the marketing maker-checker gate, generic across banking and online retail and the JP/AU/SG markets, built ports-and-adapters on the Gemini Enterprise Agent Platform."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -17,9 +17,9 @@ keywords = ["marketing-compliance", "brand-governance", "advertising-rules", "co
 dependencies = [
   # Shared commons, pinned by tag; no build-time coupling. Public repos, so CI
   # installs them with zero credentials. hex-service-kit: outbound S2S, fail-closed net defaults,
-  # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the Hrz4
+  # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the model-quality-gate
   # promotion-gate client the platform eval adapter uses. review-kit: the rule R8
-  # producer client that routes an escalated review to the Hrz7 maker-checker console.
+  # producer client that routes an escalated review to the human-review-console maker-checker console.
   "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.6",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
   "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.1",

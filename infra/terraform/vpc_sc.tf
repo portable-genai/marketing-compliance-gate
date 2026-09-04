@@ -3,7 +3,7 @@
 # Control map (SPEC concern):
 #   Residency + exfiltration control: one regular perimeter draws a logical boundary around the
 #     sovereignty-critical APIs (Vertex/Gemini, Model Armor, Logging, Cloud Trace, KMS). Data
-#     cannot be read across the boundary to a non-resident project. It contains Mkt5, Mkt6 and
+#     cannot be read across the boundary to a non-resident project. It contains next-best-action, marketing-compliance-gate and
 #     their Shared VPC host so the consent hop stays inside one production boundary.
 #
 # DRY-RUN FIRST (the skill's rule): the perimeter is created with its enforced config under
@@ -11,7 +11,7 @@
 # audit logs, add your operator/CI identity to an access level, confirm no legitimate path
 # breaks, THEN set vpc_sc_enforce = true to move the same config into `status` (enforced).
 #
-# Mkt6 owns this perimeter by default. Mkt5 declares the same membership but does not create a
+# marketing-compliance-gate owns this perimeter by default. next-best-action declares the same membership but does not create a
 # second regular perimeter. Exactly one Terraform state may set manage_shared_vpc_sc_perimeter.
 # verify: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/access_context_manager_service_perimeter
 

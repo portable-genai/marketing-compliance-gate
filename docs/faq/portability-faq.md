@@ -59,7 +59,7 @@ The `onprem` adapters are deliberate fail-fast placeholders (they raise
 `Settings` arg, so the *interface contract* for a sovereign migration is proven and enforced
 by CI today. The actual on-prem implementations are the migration work, scoped in
 [`docs/onprem-migration.md`](../onprem-migration.md). This repo is not the sovereign-exit
-*planner* (that is the sibling **Rgc9** `operational-resilience-mapping`, module
+*planner* (that is the sibling `operational-resilience-mapping`, module
 `domain/concentration_exit/`); this repo is one of the systems whose exit that planner
 reasons about.
 
@@ -69,12 +69,12 @@ No: residency is a deploy-time pin (a per-market region, the Org Policy resource
 allowlist, CMEK, VPC-SC), and portability is the ability to change *where* the stack runs by
 configuration. They are orthogonal. The region is validated per market to fail fast, and a
 new market or region is a `markets:` + tfvars change, not a fork. Residency enforcement infra
-overlaps with the sibling **Rsk3** `architecture-validator` (`domain/residency/`, a CI gate
+overlaps with the sibling `architecture-validator` (`domain/residency/`, a CI gate
 for region violations), which a fork should run rather than re-implement.
 
 ### What is NOT yet portable?
 
 The `platform`-profile delegates for the guardrail, rule KB, audit and registry ports are
-phase stubs today (only the Hrz4 eval client and the Hrz7 review router are live), so a full
+phase stubs today (only the `model-quality-gate` eval client and the `human-review-console` review router are live), so a full
 platform-profile deployment is not yet exercised end-to-end. The `local` and `gcp` review
 pipeline, and the `onprem` parity contract, are.
