@@ -61,7 +61,7 @@ determinism and defaults. Re-export it from `domain/services.py`. See
 ### Does the CI run for my fork out of the box?
 
 Yes. CI and the eval gate run on the `local` profile with **no cloud credentials and no org
-secrets** (`ci.yaml` / `eval-gate.yaml` set `MKT_GOV_PROFILE: local`), so a fork's build is
+secrets** (`gate.yaml` sets `MKT_GOV_PROFILE: local`), so a fork's build is
 green immediately. You add secrets only when you wire the `gcp` / `platform` profiles. Note
 the eval gate measures the *reference* rule set until you rebuild the golden set for your
 markets, that is an explicit adoption step, not a silent pass, and the gate refuses to score

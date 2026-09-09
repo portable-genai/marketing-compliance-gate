@@ -1,0 +1,23 @@
+# Narrative quality floors for the green-claim substantiation NARRATIVE. Owner: model risk.
+#
+# This service is deliberately almost all deterministic code: the verdict, the coverage and every
+# rule finding are computed, and the substantiation narrative is the ONLY thing a model
+# contributes. Nothing measured it, which meant the single generative output in a service whose
+# whole purpose is to stop unsubstantiated claims reaching the public was the one thing the gate
+# did not score.
+#
+# Two bars, and the difference between them is the point:
+#   floor   below this the profile MUST NOT serve this vertical. Not "degraded". Unfit.
+#   target  at or above this the profile is at full quality. Between the two is DEGRADED.
+#
+# The vertical is named for the promotion bundle rather than the repository, because the bundle
+# is what a promotion is granted against.
+schema = "quality-floors/v1"
+owner = "model risk (the model-quality-gate promotion authority)"
+
+[verticals.mkt6-compliance]
+floor = 0.65
+target = 0.88
+note = """The narrative a marketing reviewer reads before an environmental claim is published. \
+The verdict is code and the narrative is the model; a weak narrative is what a reviewer \
+overrides the verdict on."""

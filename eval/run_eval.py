@@ -46,7 +46,14 @@ from typing import Any
 # The --mode smoke|gate scaffold + aligned report rendering come from the shared
 # agent-eval-kit commons; this script keeps only its own offline
 # evaluator and gate runner.
-from agent_eval_kit import assert_each_can_go_red, eval_main
+from agent_eval_kit import (
+    assert_denominator_supports,
+    assert_each_can_go_red,
+    dataset_digest,
+    eval_main,
+    load_rubrics,
+    prove_before_scoring,
+)
 from pii_kit import UNIVERSAL_PATTERNS, Pattern, national_patterns_for, score_pii_safety
 
 from marketing_compliance_gate.domain.models import (
@@ -72,21 +79,17 @@ from marketing_compliance_gate.domain.models import (
     Vertical,
 )
 
-THRESHOLDS: dict[str, float] = {
-    "rule_coverage": 0.95,
-    "finding_accuracy": 0.90,
-    "citation_accuracy": 0.99,
-    "review_safety": 0.99,
-    "substantiation_accuracy": 0.99,
-    # The consent and preference store. 1.0 for the safety metric: there is no acceptable
-    # rate of contacting a person whose stored state refuses it. See
-    # eval/rubrics/consent_fail_closed.yaml for why there are two of them.
-    "consent_fail_closed": 1.0,
-    "consent_decision_accuracy": 1.0,
-    "consent_pii_safety": 1.0,
-}
+#: Where every bar lives. Not a dict here: a threshold written as a Python literal carries no
+#: argument, so a reviewer can read that rule coverage must clear 0.95 and cannot read why, who
+#: agreed it, or what moving it would mean. The rubric files carry the reasoning beside the
+#: number, and `agent_eval_kit.load_rubrics` reads them.
+#:
+#: What was here before was BOTH: a `THRESHOLDS` dict and a loader that overlaid four rubric
+#: files on top of it, falling back to the dict when PyYAML was missing. Two homes for one
+#: number, with a silent path that used the one nobody reviews.
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+RUBRICS = _REPO_ROOT / "eval" / "rubrics"
 DEFAULT_DATASET = _REPO_ROOT / "eval" / "datasets" / "golden_reviews.jsonl"
 # The green-claim golden set is a second, fixed dataset: --dataset overrides the review set
 # only, because the two golden sets answer different questions and are not interchangeable.
@@ -143,30 +146,29 @@ def load_golden(path: Path) -> list[GoldenExample]:
 
 
 def load_thresholds_from_rubrics() -> dict[str, float]:
-    """Read thresholds from ``eval/rubrics/*.yaml`` when PyYAML is available."""
-    thresholds = dict(THRESHOLDS)
-    try:
-        import yaml  # type: ignore[import-untyped]
-    except ImportError:
-        return thresholds
-    rubric_dir = _REPO_ROOT / "eval" / "rubrics"
-    for name in (
-        "rule_coverage.yaml",
-        "finding_accuracy.yaml",
-        "substantiation_accuracy.yaml",
-        "consent_fail_closed.yaml",
-    ):
-        rubric_path = rubric_dir / name
-        if not rubric_path.exists():
-            continue
-        doc = yaml.safe_load(rubric_path.read_text(encoding="utf-8")) or {}
-        metric = doc.get("metric")
-        if isinstance(metric, str) and "threshold" in doc:
-            thresholds[metric] = float(doc["threshold"])
-        for companion, spec in (doc.get("companion_metrics") or {}).items():
-            if isinstance(spec, dict) and "threshold" in spec:
-                thresholds[str(companion)] = float(spec["threshold"])
-    return thresholds
+    """Read every metric's reviewed bar out of ``eval/rubrics/*.yaml``. No fallback, by design.
+
+    Fails closed on a missing directory, a non-numeric bar, or the same metric given two
+    different bars in two files. There is deliberately no fallback to a module dict: a fallback
+    is a second home for a number that must have one, and it is reached exactly when the
+    reviewed file could not be read, which is the worst moment to stop using it.
+    """
+    return load_rubrics(RUBRICS).thresholds()
+
+
+#: The metrics this runner scores, in report order. Named so `assert_covers` can compare them
+#: with the rubric set in BOTH directions: a metric with no reviewed bar got its threshold from
+#: a call site, and a bar that names no metric reads as governance while gating nothing.
+SCORED: tuple[str, ...] = (
+    "rule_coverage",
+    "finding_accuracy",
+    "citation_accuracy",
+    "review_safety",
+    "substantiation_accuracy",
+    "consent_fail_closed",
+    "consent_decision_accuracy",
+    "consent_pii_safety",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -948,12 +950,17 @@ class _PerMetric:
 
 
 def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
+    # The rubrics and the scored set must agree in BOTH directions before anything is scored.
+    load_rubrics(RUBRICS).assert_covers(SCORED)
     # E2: prove the strict safety metrics can go red BEFORE trusting a green score over the
     # golden set. A tautological metric (re-reading the product's own output) would fail here.
-    assert_metrics_not_falsely_green(thresholds)
+    # This repository put the proof first before the fleet had a name for the ordering; it is
+    # `prove_before_scoring` now, which is the same statement with the commons behind it.
+    prove_before_scoring(lambda: assert_metrics_not_falsely_green(thresholds))
     examples = load_golden(dataset)
     service = _make_service()
-    agg: dict[str, _PerMetric] = {m: _PerMetric() for m in THRESHOLDS}
+    agg: dict[str, _PerMetric] = {metric: _PerMetric() for metric in SCORED}
+    expected_rules = 0
     print(f"Running offline eval gate over {len(examples)} golden reviews (ReviewService).\n")
     for ex in examples:
         asset = MarketingAsset(
@@ -968,6 +975,10 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
         )
         review = service.review(ReviewRequest(asset=asset), actor="eval-bot")
         applicable = applicable_rule_ids(service, ex)
+        # The denominator rule_coverage is actually measured over: the rules a reviewer says
+        # apply to this asset, summed across the corpus. Eight golden reviews carry many more
+        # than eight applicable rules, and the case count would understate the bar's support.
+        expected_rules += len(applicable)
         agg["rule_coverage"].scores.append(score_rule_coverage(review, applicable))
         agg["finding_accuracy"].scores.append(
             score_finding_accuracy(review, ex.expected_failing_rule_ids)
@@ -992,15 +1003,31 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
         EvalMetricResult(
             metric=metric,
             score=round(agg[metric].mean, 4),
-            threshold=thresholds.get(metric, THRESHOLDS[metric]),
-            passed=round(agg[metric].mean, 4) >= thresholds.get(metric, THRESHOLDS[metric]),
+            threshold=thresholds[metric],
+            passed=round(agg[metric].mean, 4) >= thresholds[metric],
         )
         for metric in order
     )
+    # And the corpus must be able to express every bar that claims a rate. The denominators
+    # here are per-family and are NOT the aggregate example count: `rule_coverage` is a
+    # fraction over the rules a reviewer expected to fire, `finding_accuracy` over the findings
+    # the reviews carry, and the consent metrics over their own seventeen-case corpus.
+    for metric, denominator in (
+        ("rule_coverage", expected_rules),
+        # A Jaccard over the failing rules a reviewer expected, so the denominator is those
+        # rules (thirteen across eight reviews), not the review count.
+        ("finding_accuracy", sum(len(ex.expected_failing_rule_ids) for ex in examples)),
+        ("consent_decision_accuracy", consent_examples),
+    ):
+        assert_denominator_supports(thresholds[metric], denominator, metric=metric)
     return EvalReport(
         dataset=f"{dataset} + {GREEN_DATASET} + {CONSENT_DATASET}",
         results=results,
         n_examples=len(examples) + green_examples + consent_examples,
+        dataset_digest="+".join(
+            dataset_digest(path) for path in (dataset, GREEN_DATASET, CONSENT_DATASET)
+        ),
+        evaluator="offline heuristic (no cloud creds)",
     )
 
 

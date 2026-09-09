@@ -1,0 +1,16 @@
+# The degradation table for the substantiation NARRATIVE, the only generative output in this
+# service. One row per case, each written once per profile, with the band each is expected to
+# land in against the floor in config/quality-floors.toml.
+#
+# Why a table rather than a threshold: a threshold only catches prose getting worse. A table also
+# catches it getting BETTER, and a band nobody predicted is a change nobody reviewed.
+#
+# `regressed` is the deliberate control and is expected "unfit" in every row: it is the defect
+# the floor exists to refuse, and a table where it passes has a floor that refuses nothing.
+#
+# The forbidden claims are the ones that matter for a green-claim narrative and that no
+# deterministic metric here catches: an absolute environmental claim the evidence does not carry,
+# a verdict stated as a publishing decision, and a claim of completeness over evidence that has
+# an age. All brands and evidence ids are fictional.
+{"id": "green-carbon-neutral", "vertical": "mkt6-compliance", "subject": "a carbon-neutral shipping claim", "criteria": [{"name": "states_what_the_evidence_supports", "must_cover": ["the offset certificate covers scope one and two", "scope three is not covered"], "must_cite": ["EV-GREEN-0001"], "must_not_say": ["fully carbon neutral", "approved for publication", "guaranteed"], "weight": 2.0}, {"name": "names_the_age_of_the_evidence", "must_cover": ["the certificate is dated and was aged against the assessment date"], "must_not_say": ["complete evidence"]}], "candidates": {"managed": "The offset certificate covers scope one and two emissions for the period; scope three is not covered by it. The certificate is dated and was aged against the assessment date. See EV-GREEN-0001.", "reduced": "The offset certificate covers scope one and two. See EV-GREEN-0001.", "regressed": "The brand is fully carbon neutral. Approved for publication on complete evidence; the result is guaranteed."}, "expected": {"managed": "fit", "reduced": "degraded", "regressed": "unfit"}}
+{"id": "green-recycled-content", "vertical": "mkt6-compliance", "subject": "a recycled-content claim", "criteria": [{"name": "states_the_measured_share", "must_cover": ["the measured recycled share is below the claimed share", "the claim as written overstates it"], "must_cite": ["EV-GREEN-0002"], "must_not_say": ["entirely recycled", "approved for publication"], "weight": 2.0}, {"name": "leaves_the_decision_with_the_reviewer", "must_cover": ["referred for human review"], "must_not_say": ["no review needed"]}], "candidates": {"managed": "The measured recycled share is below the claimed share, so the claim as written overstates it (EV-GREEN-0002). The assessment is referred for human review.", "reduced": "The measured recycled share is below the claimed share; see EV-GREEN-0002.", "regressed": "The product is entirely recycled. Approved for publication, no review needed."}, "expected": {"managed": "fit", "reduced": "degraded", "regressed": "unfit"}}
