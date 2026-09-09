@@ -55,6 +55,15 @@ test:
 eval:
 	$(BIN)/python eval/run_eval.py
 
+eval-narrative:
+	$(BIN)/python eval/run_narrative_eval.py
+
+evals-doc:
+	$(BIN)/python scripts/render_evals_doc.py
+
+evals-doc-check:
+	$(BIN)/python scripts/render_evals_doc.py --check
+
 plugin: ## Render the Agent Plugins 1.0.0 directory from this repo's own declarations.
 	PYTHONPATH=src $(BIN)/python scripts/render_plugin.py --dest dist/plugin
 
@@ -65,7 +74,7 @@ mcp-serve: ## Serve the governed tool catalog over MCP 2026-07-28 (stdio; needs 
 portability:
 	PYTHONPATH=src $(BIN)/python scripts/portability_demo.py
 
-gate: lint format typecheck test eval demo-selftest portability plugin
+gate: lint format typecheck test eval eval-narrative evals-doc-check demo-selftest portability plugin
 
 # The ui/ console gate. Requires node; nothing in `make gate` does.
 ui-install: ## Install the console's locked dependencies.

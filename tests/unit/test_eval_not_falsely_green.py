@@ -38,7 +38,7 @@ run_eval = _load_run_eval()
 
 def test_gate_runs_the_not_falsely_green_harness():
     """The exact guard the gate runs passes at the real thresholds."""
-    run_eval.assert_metrics_not_falsely_green(run_eval.THRESHOLDS)
+    run_eval.assert_metrics_not_falsely_green(run_eval.load_thresholds_from_rubrics())
 
 
 @pytest.mark.parametrize(
