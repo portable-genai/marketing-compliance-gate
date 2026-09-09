@@ -82,7 +82,7 @@ def test_firestore_cmek_is_off_by_default_because_it_is_allowlist_gated() -> Non
     text = _tf()
     assert 'variable "firestore_cmek_key"' in text
     assert 'default     = ""' in text
-    assert "dynamic \"cmek_config\"" in text, (
+    assert 'dynamic "cmek_config"' in text, (
         "an unconditional cmek_config block fails the apply on any project that is not on the "
         "Firestore CMEK allowlist"
     )
