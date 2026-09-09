@@ -16,4 +16,9 @@ metric: substantiation_accuracy
 description: >-
   Fraction of golden green-claim assets whose substantiation verdict matches the independent
   golden verdict.
-threshold: 0.99
+threshold: 1.0
+rationale: >-
+  Raised from 0.99 to 1.0 on the arithmetic rather than on appetite. Scored 0/1 once per case over
+  17 cases, so a single failure gives 0.941, already below 0.99: the bar required 17 of 17 while
+  reading as though it priced one failure in. 1.0 says the same thing out loud. Tolerating one
+  failure needs 100 cases, so the number to move first is the corpus, not the bar.
