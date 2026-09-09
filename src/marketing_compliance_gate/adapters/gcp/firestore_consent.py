@@ -41,7 +41,7 @@ from ...domain.consent import (
     SuppressionReason,
     SuppressionScope,
 )
-from ._region import resolve_region
+from ._region import database_for, resolve_region
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
     from google.cloud import firestore
@@ -74,16 +74,30 @@ class FirestoreConsentStoreAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client: Any | None = None
+        #: The database the cached client is bound to, so a market switch rebuilds it rather
+        #: than quietly serving the previous market's region.
+        self._database: str = ""
 
     # ------------------------------------------------------------------ #
     # Lazy, region-validated client construction
     # ------------------------------------------------------------------ #
     def _get_client(self) -> firestore.Client:  # pragma: no cover - needs the GCP SDK
-        resolve_region(self._settings, market=self._settings.active_market)
-        if self._client is None:
+        """The client for the market's OWN residency database, not the project default.
+
+        The resolved region used to be thrown away here and the client built against the
+        project's default database, so a JP request passed the residency validation and then
+        read and wrote whichever single region that database happened to sit in. A Firestore
+        database's location is fixed at creation, so serving three in-country markets means
+        three named databases and picking between them; ``infra/terraform/firestore.tf``
+        creates them under the same names.
+        """
+        region = resolve_region(self._settings, market=self._settings.active_market)
+        database = database_for(region)
+        if self._client is None or self._database != database:
             from google.cloud import firestore  # noqa: PLC0415 - lazy: gcp profile only
 
-            self._client = firestore.Client(project=self._settings.project_id)
+            self._client = firestore.Client(project=self._settings.project_id, database=database)
+            self._database = database
         return self._client
 
     # ------------------------------------------------------------------ #

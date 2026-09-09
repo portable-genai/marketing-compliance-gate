@@ -63,3 +63,13 @@ resource "google_kms_crypto_key_iam_member" "aiplatform" {
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
 }
+
+# Firestore encrypts the consent and evidence databases under this key. Without this binding the
+# database is created successfully and encrypts under Google-managed keys instead, which is
+# indistinguishable in the console from the CMEK case: the failure mode is a silent downgrade,
+# not an error.
+resource "google_kms_crypto_key_iam_member" "firestore" {
+  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-firestore.iam.gserviceaccount.com"
+}
