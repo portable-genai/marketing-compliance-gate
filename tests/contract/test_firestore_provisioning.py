@@ -65,8 +65,26 @@ def test_the_store_the_adapters_bind_to_is_actually_created() -> None:
     assert "roles/datastore.user" in iam, "the runtime identity cannot read or write documents"
     kms = (_TF_DIR / "kms.tf").read_text(encoding="utf-8")
     assert "gcp-sa-firestore.iam.gserviceaccount.com" in kms, (
-        "no CMEK binding for Firestore: the database would encrypt under Google-managed keys "
-        "and look identical in the console"
+        "no CMEK binding for Firestore, so a deployment admitted to the CMEK allowlist could "
+        "not encrypt under its own key even after asking to"
+    )
+
+
+def test_firestore_cmek_is_off_by_default_because_it_is_allowlist_gated() -> None:
+    """The one place the strict setting is not the default, and it is not a preference.
+
+    Firestore customer-managed encryption is allowlist-gated by Google: a project that has not
+    been admitted cannot create a CMEK database, and the apply FAILS rather than degrading. The
+    reference deployment is not on that allowlist, which
+    ``org-metadata/docs/deployment-posture.md`` records as externally blocked. So the key is a
+    variable defaulting to empty, and a deployment that has been admitted sets it.
+    """
+    text = _tf()
+    assert 'variable "firestore_cmek_key"' in text
+    assert 'default     = ""' in text
+    assert "dynamic \"cmek_config\"" in text, (
+        "an unconditional cmek_config block fails the apply on any project that is not on the "
+        "Firestore CMEK allowlist"
     )
 
 

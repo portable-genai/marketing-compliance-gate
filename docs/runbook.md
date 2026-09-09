@@ -133,6 +133,14 @@ and the adapters select it from the region they resolved. `var.residency_regions
 and defaults to `[var.region]`: a single-market install provisions exactly one store, because a
 database in a country nobody is serving is standing cost and a residency surface with no user.
 
+**CMEK on these databases is off by default, and that is not a preference.** Firestore
+customer-managed encryption is allowlist-gated by Google: a project that has not been admitted
+cannot create a CMEK database and the apply fails outright rather than degrading. The reference
+deployment is not admitted, which `org-metadata/docs/deployment-posture.md` records as
+externally blocked. `var.firestore_cmek_key` is empty by default and a deployment that HAS been
+admitted sets it to the stack's own key; the service-agent key binding is already in `kms.tf`,
+so turning it on is one variable.
+
 Composite indexes are declared for every multi-field query the two adapters run. Firestore
 maintains single-field indexes itself, and a composite query with no index fails at REQUEST
 time with `FAILED_PRECONDITION`: the first time a compliance officer opens a subject, on the
