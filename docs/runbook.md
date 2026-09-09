@@ -120,6 +120,45 @@ python -c "from marketing_compliance_gate.green_pack import load_pack; \
 p = load_pack('path/to/pack.yaml'); print(p.version, len(p.rules), len(p.requirements))"
 ```
 
+## The Firestore stores
+
+Two ports bind Firestore under `gcp` / `platform`: the substantiation evidence store and the
+consent store. **Nothing in `infra/terraform/` created either of them** until now, and the
+region both adapters validated never reached the client: they called `resolve_region(...)`,
+discarded the result and built a client against the project's DEFAULT database, whose location
+is fixed at creation and is a single one of the three in-country regions.
+
+So there is one NAMED database per residency region this installation serves, `mkt6-<region>`,
+and the adapters select it from the region they resolved. `var.residency_regions` lists them
+and defaults to `[var.region]`: a single-market install provisions exactly one store, because a
+database in a country nobody is serving is standing cost and a residency surface with no user.
+
+Composite indexes are declared for every multi-field query the two adapters run. Firestore
+maintains single-field indexes itself, and a composite query with no index fails at REQUEST
+time with `FAILED_PRECONDITION`: the first time a compliance officer opens a subject, on the
+deployment and nowhere else.
+
+### Seeding the demo consent
+
+The marketing journey reads consent from this service over HTTP. On a deployment that leg is
+empty until something writes a record, and a subject with no record on file is a subject nobody
+may be sent anything: the correct answer to an empty store, and the wrong demo.
+
+```bash
+# apply infra/terraform first: the loader writes documents, it does not create databases
+python scripts/load_consent_seed.py --project "$PROJECT" --tenant "$HOSTED_DOMAIN" --market SG
+```
+
+It writes the same seven subjects the offline profile serves, through the **managed adapter's
+own write methods** rather than a second serializer, so there is one description of the
+document shape. `--tenant` is required for the usual reason, `other-brand` is kept separate as
+`<tenant>-other` so a cross-tenant read that "worked" is visibly wrong rather than merely empty,
+and it refuses unless `mkt6_book_manifest/current` says what the store holds is fictional or the
+store is empty. `--dry-run` needs no credentials.
+
+The **evidence store is provisioned and not seeded**: it is created, indexed, keyed and
+region-routed, and its records are whatever an institution ingests.
+
 **The evidence store.** Under `gcp` / `platform` this is Firestore in the market's residency
 region (collection `mkt6_substantiation_evidence`); under `local` it is a SQLite file
 (`local.evidence_path`, `MKT_GOV_LOCAL_EVIDENCE`) seeded with fictional records. Every record

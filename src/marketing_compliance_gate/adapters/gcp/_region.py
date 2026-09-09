@@ -43,3 +43,30 @@ def resolve_region(settings: Settings, market: Market | None = None) -> str:
             "config/settings.yaml before deploying there."
         )
     return region
+
+
+#: The Firestore database name for one residency region. A database's location is fixed when it
+#: is created and a project's DEFAULT database is a single one of them, so a service serving
+#: three in-country markets needs three NAMED databases and has to pick between them.
+#:
+#: This function is why the residency check now reaches the wire. Both Firestore adapters used
+#: to call :func:`resolve_region` and DISCARD the result, then build
+#: ``firestore.Client(project=...)`` against the default database: a JP request passed the
+#: residency validation and then read and wrote whichever single region that database sat in.
+#: The check was real; nothing downstream of it was.
+#:
+#: ``infra/terraform/firestore.tf`` builds the same names from the same regions, and a contract
+#: test holds the two together, because a database Terraform does not create is a region the
+#: adapters can resolve and then fail on.
+_DATABASE_PREFIX = "mkt6-"
+
+
+def database_for(region: str) -> str:
+    """The Firestore database name serving ``region``. See :data:`_DATABASE_PREFIX`."""
+    if not region.strip():
+        raise UnsupportedMarketError(
+            "no residency region was resolved, so there is no database to talk to. An "
+            "unresolved region must never fall back to the default database: that is how a "
+            "validated residency boundary becomes a comment."
+        )
+    return f"{_DATABASE_PREFIX}{region}"

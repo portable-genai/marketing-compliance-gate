@@ -23,6 +23,7 @@ locals {
     # --- marketing-compliance-gate adapter-backing services (only what the gcp profile uses) ---
     "aiplatform.googleapis.com", # Gemini File Search + reasoning/triage + Gen AI eval
     "modelarmor.googleapis.com", # Model Armor guardrail (regional endpoint)
+    "firestore.googleapis.com",  # the consent and substantiation-evidence stores (firestore.tf)
     "logging.googleapis.com",    # Cloud Logging WORM bucket + audit sink
     "cloudtrace.googleapis.com", # Cloud Trace (OpenTelemetry spans)
 

@@ -25,6 +25,10 @@ locals {
     "roles/logging.logWriter",       # write audit events to the WORM sink
     "roles/cloudtrace.agent",        # OpenTelemetry spans (content OFF)
     "roles/monitoring.metricWriter", # emit its own metrics
+    # The two tenant-owned Firestore stores (firestore.tf). datastore.user rather than
+    # datastore.owner: this service reads and writes documents and never administers a
+    # database, an index or a backup.
+    "roles/datastore.user", # firestore_consent.py, firestore_evidence.py
   ]
 }
 

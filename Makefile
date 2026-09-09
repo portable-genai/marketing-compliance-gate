@@ -40,11 +40,11 @@ lock: ## Recompile every lockfile from pyproject.toml and restore the tag = comm
 
 lint:
 	$(BIN)/ruff check src tests scripts/render_review_ui.py scripts/demo_selftest.py \
-		scripts/render_plugin.py
+		scripts/render_plugin.py scripts/load_consent_seed.py
 
 format:
 	$(BIN)/ruff format --check src tests scripts/render_review_ui.py scripts/demo_selftest.py \
-		scripts/render_plugin.py
+		scripts/render_plugin.py scripts/load_consent_seed.py
 
 typecheck:
 	$(BIN)/mypy src
