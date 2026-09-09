@@ -62,6 +62,18 @@ locals {
   firestore_databases = { for region in local.firestore_regions : region => "mkt6-${region}" }
 }
 
+variable "firestore_cmek_key" {
+  description = <<-EOT
+    Full resource id of the KMS key to encrypt the Firestore databases with, or "" to use
+    Google-managed keys. Empty by DEFAULT because Firestore CMEK is allowlist-gated by Google
+    and a project that has not been admitted cannot create a CMEK database: the apply fails
+    outright. Set it to google_kms_crypto_key.mkt_gov.id on a deployment that has been
+    admitted. Recorded as externally blocked in org-metadata/docs/deployment-posture.md.
+  EOT
+  type        = string
+  default     = ""
+}
+
 resource "google_firestore_database" "store" {
   for_each = local.firestore_databases
 
@@ -75,8 +87,21 @@ resource "google_firestore_database" "store" {
   # destroy` until an operator says otherwise in the same breath.
   deletion_policy = "ABANDON"
 
-  cmek_config {
-    kms_key_name = google_kms_crypto_key.mkt_gov.id # CMEK does not cascade (P-09)
+  # CMEK is CONDITIONAL here, and that is not a preference. Firestore customer-managed
+  # encryption is allowlist-gated by Google: a project that has not been admitted to the
+  # allowlist cannot create a CMEK database at all, and the apply fails rather than degrading.
+  # The reference deployment is not on that allowlist, which
+  # `org-metadata/docs/deployment-posture.md` records as "externally blocked", so the default
+  # here is OFF and a deployment that HAS been admitted turns it on in its own tfvars.
+  #
+  # This is the one place in this file where the strict setting is not the default, and it is
+  # written down for that reason: agreeing silently and never having chosen look identical
+  # afterwards, and only one of them survives being asked about.
+  dynamic "cmek_config" {
+    for_each = var.firestore_cmek_key == "" ? [] : [var.firestore_cmek_key]
+    content {
+      kms_key_name = cmek_config.value
+    }
   }
 
   depends_on = [
