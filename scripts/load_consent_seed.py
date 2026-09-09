@@ -164,7 +164,10 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = Settings.load()
     if args.market:
-        settings = dataclasses.replace(settings, active_market=Market(args.market))
+        # `active_market` is a PROPERTY over the `market` field, so the field is what is
+        # replaced. Getting this wrong raised rather than silently writing to the wrong
+        # region's database, which is the failure mode worth having.
+        settings = dataclasses.replace(settings, market=Market(args.market).value)
     if args.project:
         settings = dataclasses.replace(settings, project_id=args.project)
 
