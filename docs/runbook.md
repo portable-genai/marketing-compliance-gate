@@ -58,7 +58,9 @@ the single regular VPC-SC perimeter in the reference topology; its membership is
 #    worm_locked = true, and the variable has no default).
 cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars   # set project_id, org_id, access_policy_id
-terraform init -input=false && terraform plan
+# State lives in the deployment's GCS state bucket under this stack's own prefix.
+terraform init -input=false -backend-config=bucket=<state-bucket> -backend-config=prefix=marketing-compliance-gate
+terraform plan
 terraform apply
 
 # 2. Export the outputs the app reads.
@@ -74,6 +76,17 @@ export GOOGLE_CLOUD_PROJECT=your-sg-project MKT_GOV_PROFILE=gcp
 gcloud auth application-default login
 make run-api PROFILE=gcp          # FastAPI on :8105 (front with the platform ingress)
 ```
+
+**An installation applied before the GCS backend existed** holds its state in a local, gitignored
+`infra/terraform/terraform.tfstate`. Migrate it once, from that directory, before any other plan:
+
+```bash
+terraform init -migrate-state -backend-config=bucket=<state-bucket> -backend-config=prefix=marketing-compliance-gate
+terraform plan   # expect no creates for the Firestore database, its indexes or the key ring
+```
+
+Do not re-create instead: the Firestore database and the key ring already exist, so their creates
+fail. The procedure and why are in `infra/terraform/README.md` under State.
 
 For `next-best-action` consent traffic, pass `marketing-compliance-gate`'s `service_url` and `s2s_audience` outputs to `next-best-action` as
 `consent_store_url` and `consent_store_audience`. Terraform grants only the reviewed `next-best-action`
