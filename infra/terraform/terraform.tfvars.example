@@ -10,8 +10,26 @@ project_id = "acme-mkt-governance-sg-prod"
 region        = "asia-southeast1"
 deploy_market = "SG"
 
-# ~7-year WORM retention for the audit log. Bucket lock is irreversible.
+# ~7-year WORM retention for the audit log. The lock has NO default: every deployment names it.
+# true is IRREVERSIBLE for the retention window; false keeps the bucket destroyable.
 retention_days = 2557
+worm_locked    = true
+
+# Shared-project declines. A deployment sharing its project with a stack that already owns the
+# Org Policies, the data-access audit config and the perimeter declines all three, and a region
+# that serves neither the malicious-URI filter nor multi-language detection narrows the guardrail:
+# manage_org_policies           = false
+# manage_audit_config           = false
+# enable_vpc_sc                 = false
+# model_armor_full_capabilities = false
+#
+# Embedding host: the portal's API runtime identity, filled after the portal apply mints it.
+# additional_serving_service_accounts = ["journey-a-000000@acme-mkt-governance-sg-prod.iam.gserviceaccount.com"]
+
+# The standalone consent service next-best-action calls. OFF by default: it carries an instance
+# floor and bills by the hour. This example IS the next-best-action topology, so it opts in, and
+# everything below through the perimeter is required only because it does.
+standalone_service_enabled = true
 
 # Org / Access Context Manager. access_policy_id is the numeric policy id.
 org_id           = "123456789012"

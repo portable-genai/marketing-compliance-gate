@@ -12,6 +12,11 @@
 #   Profile opt-in: MKT_GOV_PROFILE=gcp is set EXPLICITLY here (the app defaults to the
 #     offline `local` profile when unset; prod must opt in to the managed stack).
 #
+# Standalone only: var.standalone_service_enabled, default false. This service is the
+# internal consent endpoint next-best-action calls, and it carries an instance floor, so it bills
+# by the hour whether or not a request arrives. An installation that embeds the console under a
+# portal runs the API as the portal's own Cloud Run service and creates nothing in this file.
+#
 # The container listens on 8105 (Dockerfile EXPOSE 8105 / uvicorn --port ${PORT}); the probe
 # hits /healthz. Env vars drive settings.yaml ${ENV:-default} interpolation, so no code or
 # config-file change is needed between environments.
@@ -28,6 +33,7 @@ locals {
 }
 
 resource "google_cloud_run_v2_service" "mkt_gov" {
+  count    = var.standalone_service_enabled ? 1 : 0
   name     = local.service_name
   location = var.region
   project  = var.project_id
@@ -47,7 +53,7 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
     max_instance_request_concurrency = 80
 
     scaling {
-      min_instance_count = 1
+      min_instance_count = var.standalone_service_min_instances
       max_instance_count = 4
     }
 
@@ -154,22 +160,22 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
     }
 
     precondition {
-      condition     = tostring(data.google_project.shared_vpc_host.number) == var.shared_vpc_host_project_number
+      condition     = tostring(data.google_project.shared_vpc_host[0].number) == var.shared_vpc_host_project_number
       error_message = "shared_vpc_host_project_number must match the host project encoded in shared_vpc_network."
     }
 
     precondition {
-      condition     = data.google_compute_subnetwork.shared_cloud_run.private_ip_google_access
+      condition     = data.google_compute_subnetwork.shared_cloud_run[0].private_ip_google_access
       error_message = "The Shared VPC subnet must enable Private Google Access for VPC-SC-compliant all-traffic egress."
     }
 
     precondition {
-      condition     = tonumber(split("/", data.google_compute_subnetwork.shared_cloud_run.ip_cidr_range)[1]) <= 26
+      condition     = tonumber(split("/", data.google_compute_subnetwork.shared_cloud_run[0].ip_cidr_range)[1]) <= 26
       error_message = "Direct VPC egress requires the Shared VPC subnet to be /26 or larger."
     }
 
     precondition {
-      condition     = endswith(data.google_compute_subnetwork.shared_cloud_run.network, var.shared_vpc_network)
+      condition     = endswith(data.google_compute_subnetwork.shared_cloud_run[0].network, var.shared_vpc_network)
       error_message = "shared_vpc_subnetwork does not belong to shared_vpc_network."
     }
   }
@@ -178,9 +184,10 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
 # Cloud Run IAM is the first gate; the FastAPI verifier independently checks the same caller
 # email and audience. Both must pass, and both are driven by the same reviewed variables.
 resource "google_cloud_run_v2_service_iam_member" "mkt5_invoker" {
+  count    = var.standalone_service_enabled ? 1 : 0
   project  = var.project_id
-  location = google_cloud_run_v2_service.mkt_gov.location
-  name     = google_cloud_run_v2_service.mkt_gov.name
+  location = google_cloud_run_v2_service.mkt_gov[0].location
+  name     = google_cloud_run_v2_service.mkt_gov[0].name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.mkt5_caller_service_account}"
 }

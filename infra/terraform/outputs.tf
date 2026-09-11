@@ -12,13 +12,13 @@ output "region" {
 
 # --------------------------------- Cloud Run -------------------------------- #
 output "service_url" {
-  description = "Base URL of the marketing-compliance-gate Cloud Run service."
-  value       = google_cloud_run_v2_service.mkt_gov.uri
+  description = "Base URL of the standalone Cloud Run service (null unless standalone_service_enabled)."
+  value       = one(google_cloud_run_v2_service.mkt_gov[*].uri)
 }
 
 output "service_name" {
-  description = "Cloud Run service name."
-  value       = google_cloud_run_v2_service.mkt_gov.name
+  description = "Standalone Cloud Run service name (null unless standalone_service_enabled)."
+  value       = one(google_cloud_run_v2_service.mkt_gov[*].name)
 }
 
 output "s2s_audience" {
@@ -33,7 +33,13 @@ output "mkt5_caller_service_account" {
 
 output "agent_card_url" {
   description = "A2A AgentCard discovery URL for the service."
-  value       = "${google_cloud_run_v2_service.mkt_gov.uri}/.well-known/agent-card.json"
+  value       = var.standalone_service_enabled ? "${one(google_cloud_run_v2_service.mkt_gov[*].uri)}/.well-known/agent-card.json" : null
+}
+
+# ------------------------------- Model Armor -------------------------------- #
+output "model_armor_template" {
+  description = "Model Armor template id (settings.yaml model_armor.template_id)."
+  value       = google_model_armor_template.mkt_gov_guardrail.template_id
 }
 
 # ----------------------------- Service account ------------------------------ #
@@ -50,7 +56,7 @@ output "kms_key" {
 
 # ------------------------------- WORM logging ------------------------------- #
 output "log_bucket" {
-  description = "Locked WORM audit log bucket id (settings.yaml logging.bucket)."
+  description = "Audit log bucket id (settings.yaml logging.bucket); WORM-locked only when worm_locked = true."
   value       = google_logging_project_bucket_config.worm_audit.id
 }
 

@@ -46,13 +46,146 @@ variable "deploy_market" {
 }
 
 variable "retention_days" {
-  description = "WORM audit-log retention in days. Default ~7 years. Lock is irreversible."
+  description = <<-EOT
+    Audit-log retention in days on the marketing-compliance-gate-worm bucket. Default ~7 years.
+
+    The 2557-day compliance floor binds whenever worm_locked = true. A stack that declines the
+    lock is not keeping a record anyone relies on for seven years and may keep less. The floor
+    is conditional on the lock rather than removed, so a LOCKED bucket can never be created with
+    a short window.
+  EOT
   type        = number
   default     = 2557 # mirrors config/settings.yaml logging.retention_days
 
   validation {
-    condition     = var.retention_days >= 2557
-    error_message = "Compliance retention must be at least 2557 days (~7 years)."
+    condition     = var.retention_days >= 1 && (!var.worm_locked || var.retention_days >= 2557)
+    error_message = "retention_days must be at least 1, and at least 2557 (~7 years) whenever worm_locked = true."
+  }
+}
+
+variable "worm_locked" {
+  type        = bool
+  description = <<-EOT
+    Lock the marketing-compliance-gate-worm audit bucket.
+
+    #########################################################################
+    # WARNING: LOCKING IS IRREVERSIBLE. With true, the bucket and its       #
+    # retention window can NEVER be reduced or deleted until every entry    #
+    # ages out (retention_days), not even with project-owner rights.        #
+    #########################################################################
+
+    NO DEFAULT, and that is the decision. An irreversible control must never arrive because a
+    deployment said nothing, so there is no default of true. A fork running this as a system
+    of record must not quietly lose the WORM guarantee either, so there is no default of false.
+    Every plan names it.
+
+    true is the compliant production posture. false keeps the bucket, its retention and its
+    sink, and leaves the bucket destroyable: an evaluation or reference posture, NOT WORM.
+    Setting false against a bucket that is ALREADY locked does not unlock it; the API refuses.
+    This governs the first apply.
+  EOT
+}
+
+variable "manage_org_policies" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Whether THIS stack writes the project's Org Policies (gcp.resourceLocations,
+    iam.disableServiceAccountKeyCreation, compute.vmExternalIpAccess and
+    storage.uniformBucketLevelAccess).
+
+    True by default, because a fork deploying this app on its own project should inherit the
+    residency guardrail rather than have to remember it. Set false where another stack in the
+    same project already owns them: two stacks declaring the same project-level policy is a
+    last-writer-wins race, and the loser is whichever application needed the wider boundary.
+    This stack derives the STRICTEST location form from its own region, so applying it into a
+    shared project narrows gcp.resourceLocations to that region and breaks every sibling that
+    reaches another one, and nothing in this stack's plan says so.
+  EOT
+}
+
+variable "manage_audit_config" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Whether THIS stack writes the project's data-access audit configuration.
+
+    True by default: data-access logging is what shows who read a data subject's consent, and
+    an app deployed on its own project should turn it on rather than rely on being told to.
+
+    Set false where another stack in the same project already owns it.
+    `google_project_iam_audit_config` is AUTHORITATIVE for the service it names, so a second
+    stack declaring `allServices` does not add to the configuration, it replaces it. Terraform
+    shows that as a create, not a change, because this stack holds no prior state for a
+    resource that is already live.
+  EOT
+}
+
+variable "model_armor_full_capabilities" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Whether the guardrail template asks for the capabilities that are not served in every
+    region: the malicious-URI filter and multi-language detection.
+
+    True by default, because a deployment should get the whole guardrail unless it has a reason
+    not to. asia-southeast1 serves neither, and Model Armor does not degrade: it refuses the
+    template with CAPABILITY_NOT_SUPPORTED, so the stack does not deploy at all. A deployment
+    there sets this false, which narrows the guardrail and is a disclosure to make in the
+    deployment's posture record rather than a silent downgrade.
+  EOT
+}
+
+variable "standalone_service_enabled" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Deploy this stack's OWN Cloud Run service: the internal-only consent endpoint that
+    next-best-action calls over the Shared VPC (cloud_run.tf, network.tf).
+
+    False by default, because it is a standing charge that most installations never use. The
+    service runs with an instance floor, so it bills by the hour whether or not a request
+    arrives, and it needs a Shared VPC, a reviewed audience and a named caller that only the
+    next-best-action topology has. An installation embedding this console under a portal runs
+    the API as the PORTAL's service instead, and needs none of it. Set true for the
+    next-best-action consent hop, and supply the inputs that topology requires.
+  EOT
+}
+
+variable "standalone_service_min_instances" {
+  type        = number
+  default     = 1
+  description = <<-EOT
+    Instance floor for the standalone consent service when standalone_service_enabled = true.
+    1 keeps next-best-action's consent check free of a cold start and bills around the clock; 0
+    scales to zero and bills only while serving.
+  EOT
+  validation {
+    condition     = var.standalone_service_min_instances >= 0 && var.standalone_service_min_instances <= 4
+    error_message = "standalone_service_min_instances must be between 0 and the service's ceiling of 4."
+  }
+}
+
+variable "additional_serving_service_accounts" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Service-account emails, other than this stack's own runtime identity, that run this
+    application's API and therefore need its Firestore stores, its models and its guardrail.
+
+    Exists for embedding hosts. A portal that mounts this console same-origin runs the API under
+    a runtime identity of the PORTAL's making, which this stack cannot know and the runtime
+    identity's grants do not cover; without this the deployed app authenticates fine and then
+    fails on its first consent read. Empty by default, because an app deployed on its own needs
+    none. The host grants its own runtime baseline (logs, traces, metrics); this grants only
+    what reaches this application's data and models.
+  EOT
+  validation {
+    condition = alltrue([
+      for email in var.additional_serving_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each additional_serving_service_accounts entry must be a service-account email."
   }
 }
 
@@ -63,23 +196,26 @@ variable "org_id" {
 
 variable "container_image" {
   description = <<-EOT
-    Reviewed immutable Artifact Registry image in the deployment region. Tags are refused:
-    use REGION-docker.pkg.dev/PROJECT/REPOSITORY/IMAGE@sha256:DIGEST.
+    Reviewed immutable Artifact Registry image in the deployment region for the standalone
+    service. Tags are refused: use REGION-docker.pkg.dev/PROJECT/REPOSITORY/IMAGE@sha256:DIGEST.
+    Required only when standalone_service_enabled = true.
   EOT
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+-docker\\.pkg\\.dev/[^[:space:]]+@sha256:[0-9a-f]{64}$", var.container_image))
+    condition     = (!var.standalone_service_enabled && var.container_image == "") || can(regex("^[a-z0-9-]+-docker\\.pkg\\.dev/[^[:space:]]+@sha256:[0-9a-f]{64}$", var.container_image))
     error_message = "container_image must be an immutable Artifact Registry image pinned by sha256 digest."
   }
 }
 
 variable "shared_vpc_network" {
-  description = "Fully-qualified existing Shared VPC network: projects/HOST_PROJECT/global/networks/NETWORK."
+  description = "Fully-qualified existing Shared VPC network: projects/HOST_PROJECT/global/networks/NETWORK. Required only when standalone_service_enabled = true."
   type        = string
+  default     = ""
 
   validation {
-    condition = can(regex(
+    condition = (!var.standalone_service_enabled && var.shared_vpc_network == "") || can(regex(
       "^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/global/networks/[a-z][a-z0-9-]{0,61}[a-z0-9]$",
       var.shared_vpc_network,
     ))
@@ -88,11 +224,12 @@ variable "shared_vpc_network" {
 }
 
 variable "shared_vpc_subnetwork" {
-  description = "Fully-qualified existing Shared VPC subnet. It must be in region, on shared_vpc_network, and have Private Google Access."
+  description = "Fully-qualified existing Shared VPC subnet. It must be in region, on shared_vpc_network, and have Private Google Access. Required only when standalone_service_enabled = true."
   type        = string
+  default     = ""
 
   validation {
-    condition = (
+    condition = (!var.standalone_service_enabled && var.shared_vpc_subnetwork == "") || (
       can(regex(
         "^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/regions/${var.region}/subnetworks/[a-z][a-z0-9-]{0,61}[a-z0-9]$",
         var.shared_vpc_subnetwork,
@@ -104,21 +241,23 @@ variable "shared_vpc_subnetwork" {
 }
 
 variable "s2s_audience" {
-  description = "Reviewed HTTPS custom audience for Google-signed service ID tokens. next-best-action must mint for this exact value."
+  description = "Reviewed HTTPS custom audience for Google-signed service ID tokens. next-best-action must mint for this exact value. Required only when standalone_service_enabled = true."
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^https://[^[:space:]]+$", var.s2s_audience))
+    condition     = (!var.standalone_service_enabled && var.s2s_audience == "") || can(regex("^https://[^[:space:]]+$", var.s2s_audience))
     error_message = "s2s_audience must be a reviewed nonblank HTTPS audience."
   }
 }
 
 variable "mkt5_caller_service_account" {
-  description = "Exact next-best-action Workload Identity email allowed to invoke the consent service."
+  description = "Exact next-best-action Workload Identity email allowed to invoke the consent service. Required only when standalone_service_enabled = true."
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^[A-Za-z0-9-]+@[A-Za-z0-9-]+\\.iam\\.gserviceaccount\\.com$", var.mkt5_caller_service_account))
+    condition     = (!var.standalone_service_enabled && var.mkt5_caller_service_account == "") || can(regex("^[A-Za-z0-9-]+@[A-Za-z0-9-]+\\.iam\\.gserviceaccount\\.com$", var.mkt5_caller_service_account))
     error_message = "mkt5_caller_service_account must be one service-account email."
   }
 }
@@ -172,21 +311,23 @@ variable "shared_vpc_sc_perimeter_name" {
 }
 
 variable "mkt5_project_number" {
-  description = "Numeric project number of the next-best-action service project; included in the shared perimeter."
+  description = "Numeric project number of the next-best-action service project; included in the shared perimeter. Required when the standalone service runs or this stack owns the perimeter."
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^[0-9]{6,20}$", var.mkt5_project_number))
+    condition     = (!(var.standalone_service_enabled || (var.enable_vpc_sc && var.manage_shared_vpc_sc_perimeter)) && var.mkt5_project_number == "") || can(regex("^[0-9]{6,20}$", var.mkt5_project_number))
     error_message = "mkt5_project_number must be a numeric GCP project number, not a project id."
   }
 }
 
 variable "mkt6_project_number" {
-  description = "Numeric project number of the marketing-compliance-gate service project; included in the shared perimeter."
+  description = "Numeric project number of the marketing-compliance-gate service project; included in the shared perimeter. Required when the standalone service runs or this stack owns the perimeter."
   type        = string
+  default     = ""
 
   validation {
-    condition = (
+    condition = (!(var.standalone_service_enabled || (var.enable_vpc_sc && var.manage_shared_vpc_sc_perimeter)) && var.mkt6_project_number == "") || (
       can(regex("^[0-9]{6,20}$", var.mkt6_project_number)) &&
       var.mkt6_project_number != var.mkt5_project_number
     )
@@ -195,11 +336,12 @@ variable "mkt6_project_number" {
 }
 
 variable "shared_vpc_host_project_number" {
-  description = "Numeric project number of the Shared VPC host; VPC-SC requires the host in the same regular perimeter."
+  description = "Numeric project number of the Shared VPC host; VPC-SC requires the host in the same regular perimeter. Required when the standalone service runs or this stack owns the perimeter."
   type        = string
+  default     = ""
 
   validation {
-    condition = (
+    condition = (!(var.standalone_service_enabled || (var.enable_vpc_sc && var.manage_shared_vpc_sc_perimeter)) && var.shared_vpc_host_project_number == "") || (
       can(regex("^[0-9]{6,20}$", var.shared_vpc_host_project_number)) &&
       !contains(
         [var.mkt5_project_number, var.mkt6_project_number],

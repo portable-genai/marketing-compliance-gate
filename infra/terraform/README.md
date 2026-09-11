@@ -1,7 +1,8 @@
 # `marketing-compliance-gate` Marketing Compliance and Governance: Terraform (APAC-resident, sovereign deploy)
 
 This module provisions the managed stack for the `marketing-compliance-gate` marketing compliance and governance
-service and deploys its FastAPI container (the repo `Dockerfile`) on Cloud Run v2.
+service and, when `standalone_service_enabled = true`, deploys its FastAPI container (the repo
+`Dockerfile`) on Cloud Run v2.
 
 Region is **pinned to an APAC residency region** for every resource. The default is
 **`asia-southeast1` (Singapore)**; `asia-northeast1` (JP) and `australia-southeast1` (AU) are
@@ -18,8 +19,9 @@ tagged or cross-region image is refused before deployment.
 | FastAPI container (port 8105, `MKT_GOV_PROFILE=gcp`, CMEK, fixed internal-only ingress, Direct VPC all-traffic egress, `/healthz` probe) | `google_cloud_run_v2_service` | `cloud_run.tf` |
 | `next-best-action` consent caller boundary (custom OIDC audience, exact caller allowlist, service-level invoker) | Cloud Run custom audience + `roles/run.invoker` | `cloud_run.tf` |
 | Gemini reasoning/triage + File Search rule KB + Gen AI eval | `aiplatform` API | `apis.tf` |
-| Model Armor guardrail | `modelarmor` API | `apis.tf` |
-| WORM audit log (locked bucket + sink + data-access audit) | `logging` | `logging_worm.tf` |
+| Model Armor guardrail template `mkt-gov-guardrail` (regional capabilities follow `model_armor_full_capabilities`) | `google_model_armor_template` | `model_armor.tf` |
+| Consent and substantiation-evidence stores: one `mkt6-<region>` database per residency region, with the composite indexes the adapters query | `google_firestore_database`, `google_firestore_index` | `firestore.tf` |
+| Audit log: bucket (WORM when `worm_locked = true`), sink, and data-access audit unless `manage_audit_config = false` | `logging` | `logging_worm.tf` |
 | Tracing | `cloudtrace` API | `apis.tf` |
 | Residency org policy + no SA keys + private data plane | `gcp.resourceLocations`, ... | `org_policy.tf` |
 | Regional CMEK key + per-service IAM bindings | `cloudkms` | `kms.tf` |
@@ -73,6 +75,36 @@ never enable ownership in both states, and move/import Terraform state before tr
 ownership. The access policy id, perimeter short name and all three project numbers must be
 identical in both repos.
 
+## Embedded under `journey-portal` in a shared project
+
+The portal creates the `journey-marketing-compliance-gate-api` and `-ui` Cloud Run services from
+digest-pinned images. This stack is the support stack beside them and deploys no Cloud Run service
+of its own: `standalone_service_enabled` stays `false`, so the Cloud Run, consent-caller and Shared
+VPC rows above are absent. In a project where another stack already owns the project-level
+controls, decline them by variable:
+
+| Control | Variable | Shared-project value | Why |
+|---|---|---|---|
+| Org Policies (`gcp.resourceLocations` and three hardening constraints) | `manage_org_policies` | `false` | One value per constraint per project, and this stack's strictest form would narrow a sibling's |
+| Data-access audit config | `manage_audit_config` | `false` | Authoritative per service: applying it replaces the owner's configuration |
+| VPC-SC perimeter | `enable_vpc_sc` | `false` | A second regular perimeter would enforce where the owner observes |
+| Model Armor malicious-URI filter and multi-language detection | `model_armor_full_capabilities` | `false` in `asia-southeast1` | The region serves neither and refuses the whole template |
+| WORM lock on the audit bucket | `worm_locked` (no default) | a deliberate `true` or `false` | Irreversible when true |
+| Firestore CMEK | `firestore_cmek_key` | `""`, the default | Allowlist-gated by Google; an unadmitted project fails the apply |
+
+`additional_serving_service_accounts` names the portal's API runtime identity, which the portal
+mints on its own apply. Apply this stack with the list empty, then the portal, then this stack again
+with the identity filled in, which grants it the consent store, the models and the guardrail.
+
+**Images.** `Dockerfile` builds the API (port 8105). `ui/Dockerfile` builds the console (port
+3000) with `NEXT_PUBLIC_BASE_PATH=/apps/marketing-compliance-gate` and
+`NEXT_PUBLIC_API_BASE=/apps/marketing-compliance-gate/api` as build arguments.
+
+**The API's identity inputs.** `MKT_GOV_PROFILE=gcp`, `MKT_GOV_IAP_AUDIENCE`, and
+`MKT_GOV_IAP_TENANT_DOMAINS_JSON` mapping each sign-in domain to the tenant the consent seed was
+loaded under. Without the map every verified user resolves to their own domain, and every consent
+snapshot comes back empty.
+
 ## Usage
 
 ```bash
@@ -101,8 +133,8 @@ then promote only `marketing-compliance-gate`'s `vpc_sc_enforce` after the dry-r
 
 ## Cautions
 
-- **WORM lock is irreversible** (`logging_worm.tf`). Confirm `retention_days` before apply;
-  `locked = true` cannot be undone for the full retention window.
+- **WORM lock is irreversible** (`logging_worm.tf`). `worm_locked` has no default, so every
+  deployment names it; `true` cannot be undone for the full retention window.
 - **CMEK key is `prevent_destroy`** (`kms.tf`). Destroying it would strand all encrypted data.
 - **VPC-SC is dry-run first** (`vpc_sc.tf`). Apply with `vpc_sc_enforce = false`, watch the
   dry-run audit logs, add your operator/CI identity to an access level, confirm no legitimate
@@ -113,4 +145,5 @@ then promote only `marketing-compliance-gate`'s `vpc_sc_enforce` after the dry-r
 - **Managed consent is double-gated.** `next-best-action` must have service-level Cloud Run invoker IAM and
   its Google-signed token must match both the reviewed custom audience and application caller
   allowlist. Do not replace this with a long-lived shared secret.
-- This module is **not run** as part of the offline CI gate; it is infra-as-code for review.
+- This module is **not applied** by the offline CI gate. `make tf-validate` runs `terraform
+  validate` and the mock-provider plan tests in `tests/` with no credentials.

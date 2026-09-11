@@ -40,6 +40,13 @@ separate human **checker** action, so the agent never clears an asset itself.
 
 ## 2. Deploy (managed stack)
 
+There are two topologies. **Embedded under `journey-portal`**, which is the reference deployment:
+the portal runs the API and the console as its own Cloud Run services, and this stack provides the
+Firestore stores, the guardrail template, the key and the audit bucket, with
+`standalone_service_enabled = false` (the default) and the shared-project declines listed in
+`infra/terraform/README.md`. **Standalone, for the `next-best-action` consent hop**: set
+`standalone_service_enabled = true`. The rest of this section describes the standalone topology.
+
 The network platform must first associate both service projects with one existing Shared VPC
 host and provide a `/26` or larger region-local subnet with Private Google Access. `marketing-compliance-gate` owns
 the single regular VPC-SC perimeter in the reference topology; its membership is the host,
@@ -48,7 +55,7 @@ the single regular VPC-SC perimeter in the reference topology; its membership is
 
 ```bash
 # 1. Provision infra (review the plan; the WORM bucket lock is irreversible when
-#    locked = true, the default).
+#    worm_locked = true, and the variable has no default).
 cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars   # set project_id, org_id, access_policy_id
 terraform init -input=false && terraform plan
@@ -82,7 +89,7 @@ enforced VPC-SC. Do not use an external custom domain for `next-best-action`'s c
 `run.app` output over the Shared VPC path.
 
 For a quick project-scoped evaluation WITHOUT org-level prerequisites, set `enable_vpc_sc =
-false` and the audit bucket `locked = false` so everything stays deletable (not compliant for
+false` and `worm_locked = false` so everything stays deletable (not compliant for
 production). See `infra/terraform/terraform.tfvars.example` and `infra/terraform/README.md`.
 
 The ADK agent is deployed to Agent Runtime separately via the Agent Platform SDK; see the
@@ -191,9 +198,10 @@ load, so a mismatched deploy fails fast on both sides.
 ## 5. Key rotation, retention and the WORM lock
 
 The CMEK crypto key (`kms.tf`) rotates on schedule; rotation is transparent to the app. The
-audit bucket retention is `retention_days` (default 2557, ~7 years) and the bucket is
-`locked = true` by default, which is **irreversible**. To trial without locking, set
-`locked = false` (not compliant for production). Only screened prompts and responses are ever
+audit bucket retention is `retention_days` (default 2557, ~7 years, and at least that whenever
+the bucket is locked). The lock is `worm_locked`, which has **no default**: `true` is
+**irreversible** for the retention window, and `false` keeps the bucket destroyable (not
+compliant for production). Only screened prompts and responses are ever
 written to the audit log.
 
 ## 6. Kill switch

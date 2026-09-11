@@ -43,8 +43,10 @@ data "google_project" "this" {
 # encrypts with this key needs its OWN binding here.
 # --------------------------------------------------------------------------- #
 
-# Cloud Run service agent (CMEK on the service revision).
+# Cloud Run service agent (CMEK on the standalone service revision). Only when that service runs:
+# an embedded installation's revisions belong to the portal and encrypt under the portal's key.
 resource "google_kms_crypto_key_iam_member" "run" {
+  count         = var.standalone_service_enabled ? 1 : 0
   crypto_key_id = google_kms_crypto_key.mkt_gov.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@serverless-robot-prod.iam.gserviceaccount.com"

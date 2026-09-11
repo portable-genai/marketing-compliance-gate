@@ -10,6 +10,10 @@
 #
 # Scoped to the project. To enforce org-wide, move these to parent =
 # "organizations/${var.org_id}".
+#
+# Every policy here is gated on var.manage_org_policies. A project holds ONE value per
+# constraint, so in a project another stack already governs these are declined rather than
+# fought over: see that variable for what applying them into a shared project would break.
 # verify: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/org_policy_policy
 
 locals {
@@ -24,6 +28,7 @@ locals {
 
 # Master residency policy: only allow the deploy region's location group.
 resource "google_org_policy_policy" "resource_locations" {
+  count  = var.manage_org_policies ? 1 : 0
   name   = "projects/${var.project_id}/policies/gcp.resourceLocations"
   parent = "projects/${var.project_id}"
 
@@ -44,6 +49,7 @@ resource "google_org_policy_policy" "resource_locations" {
 
 # Disable creation of exportable service-account keys (use Workload Identity instead).
 resource "google_org_policy_policy" "disable_sa_keys" {
+  count  = var.manage_org_policies ? 1 : 0
   name   = "projects/${var.project_id}/policies/iam.disableServiceAccountKeyCreation"
   parent = "projects/${var.project_id}"
 
@@ -58,6 +64,7 @@ resource "google_org_policy_policy" "disable_sa_keys" {
 
 # Disable VM external IPs — keep the data plane private.
 resource "google_org_policy_policy" "no_external_ip" {
+  count  = var.manage_org_policies ? 1 : 0
   name   = "projects/${var.project_id}/policies/compute.vmExternalIpAccess"
   parent = "projects/${var.project_id}"
 
@@ -72,6 +79,7 @@ resource "google_org_policy_policy" "no_external_ip" {
 
 # Require uniform bucket-level access (no per-object ACL exfiltration paths).
 resource "google_org_policy_policy" "uniform_bucket_access" {
+  count  = var.manage_org_policies ? 1 : 0
   name   = "projects/${var.project_id}/policies/storage.uniformBucketLevelAccess"
   parent = "projects/${var.project_id}"
 
