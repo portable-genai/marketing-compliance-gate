@@ -112,8 +112,10 @@ run-api: ## Run the real FastAPI service on :$(API_PORT) (PROFILE=$(PROFILE)).
 run-ui: ## Run the thin Next.js console (dev server); set NEXT_PUBLIC_API_BASE to the API.
 	cd $(UI_DIR) && npm install && npm run dev
 
-tf-plan: ## Plan the APAC-resident Terraform deploy (region pinned + validated).
-	cd $(TF_DIR) && terraform init -input=false && terraform plan
+tf-plan: ## Plan the APAC-resident deploy against its GCS state; needs TF_STATE_BUCKET and credentials.
+	cd $(TF_DIR) && terraform init -input=false \
+		"-backend-config=bucket=$${TF_STATE_BUCKET:?set TF_STATE_BUCKET to the GCS state bucket}" \
+		-backend-config=prefix=marketing-compliance-gate && terraform plan
 
 tf-validate: ## Offline Terraform proof: fmt, validate and the mock-provider plan tests (no credentials).
 	cd $(TF_DIR) && terraform fmt -check -recursive && terraform init -backend=false -input=false && terraform validate && terraform test

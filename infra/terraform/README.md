@@ -109,12 +109,35 @@ snapshot comes back empty.
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars   # fill in project_id, org_id, ...
-terraform init -input=false
+terraform init -input=false -backend-config=bucket=<state-bucket> -backend-config=prefix=marketing-compliance-gate
 terraform plan                                  # review; do NOT auto-apply the WORM lock blindly
 terraform apply
 ```
 
-Or, from the repo root: `make tf-plan`.
+Or, from the repo root: `make tf-plan TF_STATE_BUCKET=<state-bucket>`.
+
+## State
+
+`providers.tf` declares a partial `backend "gcs" {}`. The bucket and the prefix are init inputs,
+never code: `<state-bucket>` is the deployment's state bucket, which every other deployed stack
+shares under its own prefix, and this stack's prefix is `marketing-compliance-gate`. Local state
+for a stack that owns a KMS key and the Firestore stores exists on exactly one laptop, so a named
+deployment does not keep it. The offline proof never touches the bucket: `make tf-validate`
+runs `terraform init -backend=false` before `terraform validate` and `terraform test`.
+
+**Migrate existing local state once. Never re-create it.** An installation applied before the
+backend was declared holds its state in a gitignored `terraform.tfstate` in this directory,
+recording the `mkt6-<region>` Firestore database, its composite indexes, the KMS key ring and
+key, and the enabled services. From the directory holding that file, with credentials:
+
+```bash
+terraform init -migrate-state -backend-config=bucket=<state-bucket> -backend-config=prefix=marketing-compliance-gate
+terraform plan   # expect no creates for the database, the indexes or the key ring
+```
+
+Answer `yes` when init offers to copy the existing state into the bucket. Starting from an empty
+prefix instead plans the database and the key ring as new, and both creates fail because both
+already exist. Keep the local file until the migrated plan shows none of those creates.
 
 Build and push the container before apply, then resolve the immutable digest and put the
 regional `@sha256:` URI in `terraform.tfvars` (tags are deliberately refused):
