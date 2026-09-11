@@ -38,7 +38,7 @@ adapters selected by `MKT_GOV_PROFILE`:
 | Profile | Adapter | How identity is established |
 |---|---|---|
 | `local` | `LocalPersonaIdentityAdapter` | Seeded dev persona chosen by the `X-Dev-Persona` header (default = first persona). No IdP, no AD/LDAP. For demos and tests. |
-| `gcp`, `platform` | `IapIdentityAdapter` | Verifies the GCP Identity-Aware Proxy assertion (`x-goog-iap-jwt-assertion`): signature, audience (`MKT_GOV_IAP_AUDIENCE`), issuer, expiry. Subject from `email`/`sub`, tenant from `hd`. The assertion is never logged. |
+| `gcp`, `platform` | `IapIdentityAdapter` | Verifies the GCP Identity-Aware Proxy assertion (`x-goog-iap-jwt-assertion`): signature, audience (`MKT_GOV_IAP_AUDIENCE`), issuer, expiry. Subject from `email`/`sub`; tenant from `MKT_GOV_IAP_TENANT_DOMAINS_JSON` (or `MKT_GOV_IAP_MACHINE_TENANTS_JSON` for a service account), else `hd`. The assertion is never logged. |
 | `onprem` | `OnPremIdentityAdapter` | Fail-fast placeholder: implement verification against the client's own enterprise IdP (OIDC/SAML) and map the verified claims to a `Principal`. |
 
 The seeded local personas (reviewer, approver, auditor, and a cross-tenant user) let you
@@ -209,6 +209,8 @@ Allowed methods are `GET, POST, OPTIONS`; allowed headers are `Content-Type`,
 |---|---|---|---|
 | `MKT_GOV_PROFILE` | backend | (unset = no choice) | `local` \| `gcp` \| `platform` \| `onprem`: selects the identity adapter (and the whole stack). Unset refuses the `local` relaxations rather than assuming them. |
 | `MKT_GOV_IAP_AUDIENCE` | backend | (empty) | Expected audience of the IAP assertion; required in `gcp`/`platform`. |
+| `MKT_GOV_IAP_TENANT_DOMAINS_JSON` | backend | (unset) | JSON object mapping a verified sign-in domain to the tenant the consent store is read and written under. Unset keeps `hd` as the tenant; set and empty refuses. |
+| `MKT_GOV_IAP_MACHINE_TENANTS_JSON` | backend | (unset) | JSON object mapping an exact service-account address to a tenant, for a programmatic caller. Never keyed by domain. |
 | `MKT_GOV_CORS_ORIGINS` | backend | dev origins under a deliberate `local`, otherwise empty | Comma-separated per-tenant CORS allowlist. Never `"*"`. |
 | `MKT_GOV_FRAME_ANCESTORS` | backend | `'self'` when unset | CSP `frame-ancestors`: which parent origins may iframe the console. Set and blank is refused at boot, never read as the default. |
 | `MKT_GOV_ALLOW_INSECURE_DEMO` | backend | (unset = guard on) | The ONE opt-out from the loopback exposure bound. When the bound identity adapter does not verify the end user, a non-loopback peer gets 503; set this to exactly `1` to accept that exposure deliberately. `0`, `true`, blank and ` 1 ` all leave the guard on. |

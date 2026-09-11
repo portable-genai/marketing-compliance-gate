@@ -46,8 +46,8 @@ from hex_service_kit.federation import (
 )
 
 from marketing_compliance_gate.adapters.gcp.iap_identity import (
-    _FEDERATION_POLICY,
     IapIdentityAdapter,
+    _federation_policy,
 )
 from marketing_compliance_gate.domain.identity import IdentityError, RequestContext
 
@@ -146,7 +146,7 @@ def test_the_claim_half_is_the_commons_decision_and_not_a_local_copy(
     assert _fields(_resolve(claims)) == _fields(
         principal_from_iap_claims(
             claims,
-            _FEDERATION_POLICY,
+            _federation_policy(),
             source="gcp-iap",
             include_subject_principal=True,
         )
@@ -191,17 +191,16 @@ def test_the_hosted_domain_passthrough_is_an_opt_in_this_deployment_made() -> No
 
     With passthrough cleared, the SAME verified assertion resolves to no tenant. That is
     fail-closed and it is closed for every user, which is why the choice is written down as a
-    reviewed policy object rather than left to a default. No domain is mapped, because this
-    deployment has no reviewed domain map: an unmapped domain must therefore get its tenant
-    from the opt-in or from nothing.
+    reviewed policy object rather than left to a default. This test configures no
+    reviewed domain map, so an unmapped domain gets its tenant from the opt-in or from nothing.
     """
-    assert _FEDERATION_POLICY.tenant_from_hosted_domain is True
-    assert dict(_FEDERATION_POLICY.domain_tenants) == {}
-    assert dict(_FEDERATION_POLICY.domain_groups) == {}
+    assert _federation_policy().tenant_from_hosted_domain is True
+    assert dict(_federation_policy().domain_tenants) == {}
+    assert dict(_federation_policy().domain_groups) == {}
 
     without = FederationPolicy()
     assert without.tenant_for("example-bank.test", email_domain="example-bank.test") == ""
-    assert _FEDERATION_POLICY.tenant_for("example-bank.test") == "example-bank.test"
+    assert _federation_policy().tenant_for("example-bank.test") == "example-bank.test"
 
     # The tenant a verified user actually receives, which is the half an attribute assertion
     # cannot see. The comparison test above evaluates BOTH sides under this same policy, so it

@@ -115,8 +115,8 @@ run-ui: ## Run the thin Next.js console (dev server); set NEXT_PUBLIC_API_BASE t
 tf-plan: ## Plan the APAC-resident Terraform deploy (region pinned + validated).
 	cd $(TF_DIR) && terraform init -input=false && terraform plan
 
-tf-validate:
-	cd $(TF_DIR) && terraform fmt -check -recursive && terraform init -backend=false -input=false && terraform validate
+tf-validate: ## Offline Terraform proof: fmt, validate and the mock-provider plan tests (no credentials).
+	cd $(TF_DIR) && terraform fmt -check -recursive && terraform init -backend=false -input=false && terraform validate && terraform test
 
 clean:
 	rm -rf $(VENV) .pytest_cache .ruff_cache .mypy_cache

@@ -45,3 +45,32 @@ resource "google_kms_crypto_key_iam_member" "runtime" {
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.runtime.email}"
 }
+
+# --------------------- Embedding host's runtime identity -------------------- #
+# A portal that mounts this console same-origin runs the API under a service account of the
+# PORTAL's making. That identity is the one the container authenticates as, so without these
+# grants the deployed app starts, authenticates, and then fails on its first consent read or
+# guardrail call, which reads as a broken application rather than as a missing binding. Empty by
+# default: an app deployed on its own needs none of this.
+#
+# Narrower than the runtime identity above, deliberately. The host already grants every embedded
+# identity its runtime baseline (logs, traces, metrics), so none of that is repeated. No CMEK
+# key grant: the Firestore stores are Google-managed-key by default (firestore.tf) and, when a
+# key is set, Firestore decrypts through its own service agent (kms.tf), never through the caller.
+locals {
+  additional_serving_project_roles = [
+    "roles/aiplatform.user", # Gemini narration and File Search
+    "roles/modelarmor.user", # screen through the mkt-gov-guardrail template
+    "roles/datastore.user",  # the consent and evidence stores
+  ]
+}
+
+resource "google_project_iam_member" "additional_serving" {
+  for_each = {
+    for pair in setproduct(var.additional_serving_service_accounts, local.additional_serving_project_roles) :
+    "${pair[0]}|${pair[1]}" => { email = pair[0], role = pair[1] }
+  }
+  project = var.project_id
+  role    = each.value.role
+  member  = "serviceAccount:${each.value.email}"
+}

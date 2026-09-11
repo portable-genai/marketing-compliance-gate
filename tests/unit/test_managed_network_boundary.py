@@ -23,15 +23,16 @@ def test_mkt6_ingress_cannot_be_weakened_and_egress_uses_shared_vpc() -> None:
     assert 'egress = "ALL_TRAFFIC"' in cloud_run
     assert "network    = var.shared_vpc_network" in cloud_run
     assert "subnetwork = var.shared_vpc_subnetwork" in cloud_run
-    assert "data.google_compute_subnetwork.shared_cloud_run.private_ip_google_access" in cloud_run
+    private_access = "data.google_compute_subnetwork.shared_cloud_run[0].private_ip_google_access"
+    assert private_access in cloud_run
     cidr_guard = (
         'tonumber(split("/", '
-        "data.google_compute_subnetwork.shared_cloud_run.ip_cidr_range)[1]) <= 26"
+        "data.google_compute_subnetwork.shared_cloud_run[0].ip_cidr_range)[1]) <= 26"
     )
     assert cidr_guard in cloud_run
     assert "data.google_project.this.number) == var.mkt6_project_number" in cloud_run
     assert (
-        "data.google_project.shared_vpc_host.number) == var.shared_vpc_host_project_number"
+        "data.google_project.shared_vpc_host[0].number) == var.shared_vpc_host_project_number"
         in cloud_run
     )
     assert "roles/compute.networkViewer" in network

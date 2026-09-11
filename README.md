@@ -225,6 +225,7 @@ the audit actor. `POST /v1/review` takes no `actor` field. The embedding-surface
 (per-tenant CORS allowlist, CSP `frame-ancestors`) and the three deployment shapes are
 described in [`docs/embedding-and-identity.md`](docs/embedding-and-identity.md).
 
-Config knobs: `MKT_GOV_PROFILE` (local | gcp | platform | onprem), `MKT_GOV_IAP_AUDIENCE`,
+Config knobs: `MKT_GOV_PROFILE` (local | gcp | platform | onprem), `MKT_GOV_IAP_AUDIENCE`, `MKT_GOV_IAP_TENANT_DOMAINS_JSON`,
+`MKT_GOV_IAP_MACHINE_TENANTS_JSON`,
 `MKT_GOV_CORS_ORIGINS`, `MKT_GOV_FRAME_ANCESTORS`, and the UI's `NEXT_PUBLIC_API_BASE` /
 `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_EMBED`.
