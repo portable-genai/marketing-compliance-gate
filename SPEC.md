@@ -41,7 +41,7 @@ the rule engine.
 
 | Port | Method(s) | GCP backing |
 |---|---|---|
-| `RuleProviderPort` | `rule_set`, `search` | Gemini API File Search over the rule KB |
+| `RuleProviderPort` | `rule_set`, `search` | the versioned rule pack bundled in the package (no managed rule store) |
 | `EvidenceStorePort` | `list_for_asset`, `get`, `put` | Firestore, in the market's residency region |
 | `LlmPort` | `generate`, `classify` | Gemini (`gemini-3.5-flash`, `gemini-3.5-flash`) |
 | `GuardrailPort` | `screen` | Model Armor |

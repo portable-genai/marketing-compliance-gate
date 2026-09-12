@@ -2,7 +2,7 @@
 #
 # Control map (SPEC concern):
 #   Least privilege: ONE dedicated runtime identity for the serving / API container, granted
-#     only the roles it needs (call the reasoning model + File Search + eval, screen with
+#     only the roles it needs (call the reasoning model + eval, screen with
 #     Model Armor, write audit + traces). No broad / project-owner roles, no shared SA.
 #   No keys: the identity is used via Workload Identity by Cloud Run; org_policy.tf forbids
 #     exportable SA keys, so this account can never have a key minted for it.
@@ -17,10 +17,10 @@ resource "google_service_account" "runtime" {
 }
 
 locals {
-  # Serving path: call Gemini (reasoning/triage), File Search and Gen AI eval; screen with
+  # Serving path: call Gemini (reasoning/triage) and Gen AI eval; screen with
   # Model Armor; write audit events to the WORM sink; emit OpenTelemetry spans.
   runtime_roles = [
-    "roles/aiplatform.user",         # Gemini reasoning + File Search rule KB + Gen AI eval
+    "roles/aiplatform.user",         # Gemini reasoning/triage + Gen AI eval
     "roles/modelarmor.user",         # Model Armor guardrail screening
     "roles/logging.logWriter",       # write audit events to the WORM sink
     "roles/cloudtrace.agent",        # OpenTelemetry spans (content OFF)
@@ -59,7 +59,7 @@ resource "google_kms_crypto_key_iam_member" "runtime" {
 # key is set, Firestore decrypts through its own service agent (kms.tf), never through the caller.
 locals {
   additional_serving_project_roles = [
-    "roles/aiplatform.user", # Gemini narration and File Search
+    "roles/aiplatform.user", # Gemini narration
     "roles/modelarmor.user", # screen through the mkt-gov-guardrail template
     "roles/datastore.user",  # the consent and evidence stores
   ]

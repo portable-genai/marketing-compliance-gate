@@ -46,16 +46,13 @@ MCP_PROTOCOL_VERSION = "2026-07-28"
 # handler answering a call that omitted them would have to pick a market, and picking one means
 # silently answering a Singapore question with Japanese rules.
 #
-# The managed adapter makes it sharper than a wrong answer: ``file_search_rules.search`` calls
-# ``resolve_region(settings, market=market)``, so the market is what the per-market RESIDENCY
-# check keys on. An optional market is an optional residency check.
-#
-# They are required, and named as the scope rather than described as a filter.
+# They are required, and named as the scope rather than described as a filter. The bundled
+# pack is keyed on exactly this pair, so a lookup without both has no rule set to read.
 _SCOPE_SCHEMA: dict[str, Any] = {
     "market": {
         "type": "string",
         "enum": ["JP", "AU", "SG"],
-        "description": "The market whose rules apply, and whose residency region is checked.",
+        "description": "The market whose rules apply.",
     },
     "vertical": {
         "type": "string",
@@ -96,8 +93,8 @@ def _build_catalog() -> dict[str, ToolSpec]:
         "search_rules": ToolSpec(
             name="search_rules",
             description=(
-                "Search the per-market, per-vertical compliance rule KB (File Search) and "
-                "return the matching cited rules."
+                "Search the per-market, per-vertical compliance rule set (the versioned "
+                "bundled rule pack) and return the matching cited rules."
             ),
             input_schema={
                 "type": "object",

@@ -47,8 +47,8 @@ are one configured rule set among others, not the only frame.
 
 | profile  | what it is | Google Cloud SDK |
 | -------- | ---------- | ---------------- |
-| `local`  | a WORKING, offline, deterministic stack (SQLite FTS5 rule KB) | none |
-| `gcp`    | the managed stack: Gemini API File Search rule KB, Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval | `[gcp]` extra |
+| `local`  | a WORKING, offline, deterministic stack (SQLite FTS5 over the bundled rule pack) | none |
+| `gcp`    | the managed stack: the bundled versioned rule pack, Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval | `[gcp]` extra |
 | `onprem` | fail-fast `NotImplementedError` placeholders (the sovereign migration target) | none |
 
 `local` is the dev/test/CI default and needs no `google-cloud-*` packages.
@@ -123,7 +123,7 @@ ui/                  thin Next.js console (compiles with `npm run build`)
 
 ## Ports (the hexagon boundary)
 
-`RuleProviderPort` (the rule KB), `EvidenceStorePort` (tenant-scoped green-claim
+`RuleProviderPort` (the rule source), `EvidenceStorePort` (tenant-scoped green-claim
 substantiation evidence), `ConsentStorePort` (the tenant-scoped consent and preference
 store), `LlmPort`, `GuardrailPort`, `AuditSinkPort`, `ObservabilityTracerPort`,
 `EvaluationGatePort`, `AgentRegistryPort`, `ToolCatalogPort`, `IdentityPort`

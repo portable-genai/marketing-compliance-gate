@@ -23,8 +23,10 @@ rather than merging `main` continuously, so conflicts stay in files you were tol
 ### How do I change the rules without touching engine code?
 
 The compliance numbers are **rule data, not code**. The claim / disclosure patterns, numeric
-limits, per-rule severities and citations live in the seeded `RuleSet` (`adapters/local/
-_seed.py`, or point `local.seed_path` at your own file). The `RuleEngine` has no hard-coded
+limits, per-rule severities and citations live in the bundled rule pack
+(`adapters/local/_seed.py`), which every profile except `platform` serves. Edit the pack and
+bump `RULE_PACK_VERSION`; the version lands on every review's audit event. The `RuleEngine` has
+no hard-coded
 compliance threshold; it reads the active rule set. Boundary tests
 (`test_rule_engine.py::test_numeric_max_boundary_and_missing`,
 `test_config_and_local_rules.py`) show a seeded limit driving behavior. Note there is no

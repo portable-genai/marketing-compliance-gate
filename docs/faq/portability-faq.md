@@ -19,11 +19,12 @@ The pure-domain core speaks only to `typing.Protocol` **ports**; four **adapter 
 implement them, and `config/settings.yaml` binds one adapter per port per profile. Setting
 `MKT_GOV_PROFILE` (or `profile:` in the settings) rebinds the entire stack:
 
-- `local`: a WORKING offline stack (SQLite FTS5 rule KB that self-seeds, deterministic rule
-  engine and LLM, hash-chained audit). No Google Cloud SDK. What dev / test / CI run, but it
-  must be named: unset is no choice, not a silent `local`.
-- `gcp`: the managed stack (Gemini API File Search rule KB, Gemini narration, Model Armor,
-  Cloud Logging WORM, Cloud Trace, Gen AI eval).
+- `local`: a WORKING offline stack (a self-seeding SQLite FTS5 index over the bundled rule
+  pack, deterministic rule engine and LLM, hash-chained audit). No Google Cloud SDK. What dev /
+  test / CI run, but it must be named: unset is no choice, not a silent `local`.
+- `gcp`: the managed stack (the same bundled versioned rule pack served in memory, Gemini
+  narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval). The rule source is
+  deliberately NOT a managed service: the deployment has no rule store to provision.
 - `platform`: thin HTTP clients delegating to the sibling horizontal-platform and
   de-risking services.
 - `onprem`: fail-fast `NotImplementedError` placeholders that still satisfy every Protocol

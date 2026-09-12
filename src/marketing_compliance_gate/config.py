@@ -182,12 +182,17 @@ class ModelSettings:
 
 @dataclass(frozen=True)
 class KnowledgeBaseSettings:
-    """The per-market/vertical compliance rule KB (Gemini File Search / A2)."""
+    """Where the ``platform`` profile's rule source lives.
+
+    Only the ``platform`` profile reaches a rule store over the network (the shared
+    ``enterprise-knowledge-base``, base URL read from the variable ``base_url_env`` names).
+    The ``gcp`` and ``local`` profiles serve the versioned rule pack bundled in the package
+    (``adapters/local/_seed.py``, ``RULE_PACK_VERSION``) and need nothing here: a deployment
+    has no managed rule store to provision, and the rules it fires are the rules the gate
+    proved.
+    """
 
     base_url_env: str = "KNOWLEDGE_BASE_URL"
-    data_store_id: str = "mkt-gov-rule-kb"  # only used by the standalone GCP adapter
-    location: str = "asia-southeast1"
-    top_k: int = 10
 
 
 @dataclass(frozen=True)
@@ -230,9 +235,8 @@ class LocalSettings:
     pass ``:memory:`` for ephemeral, deterministic stores. No Google Cloud here.
     """
 
-    db_path: str = ""  # SQLite FTS5 compliance rule-KB index
+    db_path: str = ""  # SQLite FTS5 index over the bundled rule pack
     audit_path: str = ""  # append-only audit store
-    seed_path: str = ""  # rule-set seed JSON ("" => bundled fictional seed)
     evidence_path: str = ""  # SQLite substantiation-evidence store
     consent_path: str = ""  # SQLite consent and preference store
 

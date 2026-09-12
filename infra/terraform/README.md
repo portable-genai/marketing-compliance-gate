@@ -18,7 +18,7 @@ tagged or cross-region image is refused before deployment.
 |---|---|---|
 | FastAPI container (port 8105, `MKT_GOV_PROFILE=gcp`, CMEK, fixed internal-only ingress, Direct VPC all-traffic egress, `/healthz` probe) | `google_cloud_run_v2_service` | `cloud_run.tf` |
 | `next-best-action` consent caller boundary (custom OIDC audience, exact caller allowlist, service-level invoker) | Cloud Run custom audience + `roles/run.invoker` | `cloud_run.tf` |
-| Gemini reasoning/triage + File Search rule KB + Gen AI eval | `aiplatform` API | `apis.tf` |
+| Gemini reasoning/triage + Gen AI eval | `aiplatform` API | `apis.tf` |
 | Model Armor guardrail template `mkt-gov-guardrail` (regional capabilities follow `model_armor_full_capabilities`) | `google_model_armor_template` | `model_armor.tf` |
 | Consent and substantiation-evidence stores: one `mkt6-<region>` database per residency region, with the composite indexes the adapters query | `google_firestore_database`, `google_firestore_index` | `firestore.tf` |
 | Audit log: bucket (WORM when `worm_locked = true`), sink, and data-access audit unless `manage_audit_config = false` | `logging` | `logging_worm.tf` |
@@ -35,6 +35,13 @@ The APIs enabled in `apis.tf` map one-to-one onto the `gcp:` adapter bindings in
 deploy services (Cloud Run, Artifact Registry, Cloud KMS, IAM, Org Policy, Access Context
 Manager, Monitoring, Compute). The `agent_registry` and `tool_catalog` adapters are HTTP
 clients to platform-internal services and need no Google API.
+
+**There is no rule store to provision.** The `gcp` profile's `rule_provider` serves the
+versioned rule pack bundled in the package (`adapters/local/_seed.py`, `RULE_PACK_VERSION`),
+so the compliance rules a deployed review fires are the rules the offline gate and the
+evaluation set proved, at a version every audit event names. Changing a rule is a reviewed
+repository change, not a console edit against a managed index, and an operator cannot leave
+the deployment pointing at an empty store.
 
 ## `next-best-action` -> `marketing-compliance-gate` managed consent authentication
 

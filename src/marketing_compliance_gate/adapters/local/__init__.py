@@ -5,9 +5,9 @@ Cloud services) and ``onprem`` (fail-fast migration placeholders). Unlike ``onpr
 adapter here is a *real, deterministic* implementation that runs the whole compliance-review
 pipeline end to end with **no Google Cloud, no API key, and no running emulators**:
 
-* Rule KB / File Search (A2) -> a ``sqlite3`` **FTS5** index over the seeded fictional
-  per-market, per-vertical rule sets (banking AND online retail across JP / AU / SG),
-  returning fully-typed rules for the deterministic rule engine to evaluate.
+* Rule source -> a ``sqlite3`` **FTS5** index over the bundled, versioned fictional rule
+  pack (banking AND online retail across JP / AU / SG), returning fully-typed rules for the
+  deterministic rule engine to evaluate. The managed profile serves the same pack in memory.
 * LLM (Gemini) -> a deterministic, schema-driven narrator of the findings (no model, no
   network).
 * Guardrail (Model Armor) -> a heuristic that blocks prompt-injection / jailbreak text.

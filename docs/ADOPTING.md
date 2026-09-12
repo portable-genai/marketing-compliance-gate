@@ -26,7 +26,7 @@ marketing artifacts and the rule content are yours to own.
 | Layer | Where | For your fork |
 |---|---|---|
 | **Reusable core** (vertical-neutral) | the stable `domain/kernel.py` import surface, deterministic checker mechanics, serialization/identity modules and generic ports | keep untouched |
-| **Compliance numbers** (your rules) | the seeded `RuleSet` (bundled seed in `adapters/local/_seed.py`, or `local.seed_path` in `config/settings.yaml`): claim / disclosure patterns, numeric limits, per-rule severities and citations | change by rule data, not code |
+| **Compliance numbers** (your rules) | the bundled rule pack (`adapters/local/_seed.py`, versioned by `RULE_PACK_VERSION`): claim / disclosure patterns, numeric limits, per-rule severities and citations | change by rule data, not code |
 | **Vertical** (marketing artifacts) | the `MarketingAsset` / `Review` artifacts in `domain/models.py`, the narration in `domain/services.py`, `domain/prompts` wording, the local fixtures, the eval golden set, the UI review views | rewrite for your assets and markets |
 
 If your product is another *marketing-compliance* vertical, the deterministic rule engine,
@@ -41,8 +41,8 @@ Upstream keeps evolving these; avoid diverging from them so you can pull fixes c
 - **Upstream-owned** (take our changes): `domain/rule_engine.py` mechanics, `ports/`,
   `tests/contract/`, the eval harness (`eval/run_eval.py` mechanics), CI workflows, the
   hexagon wiring (`config.py` `Container`).
-- **Adopter-owned** (yours; expect to edit): `config/settings.yaml` *values*, the rule seed
-  (`adapters/local/_seed.py` or your `seed_path`), the local fixtures, `adapters/onprem/*`,
+- **Adopter-owned** (yours; expect to edit): `config/settings.yaml` *values*, the rule pack
+  (`adapters/local/_seed.py` and its `RULE_PACK_VERSION`), the local fixtures, `adapters/onprem/*`,
   UI theming / branding, the golden eval dataset, the `COMPLIANCE.md` regulator crosswalk
   rows.
 
@@ -89,12 +89,14 @@ human decisions below.
    placeholder. Wire your IdP behind the `IdentityPort` and set `MKT_GOV_IAP_AUDIENCE` (and
    the CORS / frame-ancestors allowlists) for the secure profile. See
    [`docs/embedding-and-identity.md`](embedding-and-identity.md).
-3. **The rule seed is your compliance content.** The bundled `RuleSet` is a reference, not
+3. **The rule pack is your compliance content.** The bundled `RuleSet` is a reference, not
    your policy. Replace the claim / disclosure patterns, numeric limits, severities and the
    per-rule `Citation` (to the real authority) for each of your markets and verticals in
-   `adapters/local/_seed.py` (or point `local.seed_path` at your own), and own those numbers
-   with your compliance function. The engine has no hard-coded compliance threshold; it
-   reads the rule data.
+   `adapters/local/_seed.py`, bump `RULE_PACK_VERSION`, and own those numbers with your
+   compliance function. The pack is what the deployment serves too, so a rule reaches
+   production through review and the gate rather than a console edit, and the version lands on
+   every review's audit event. The engine has no hard-coded compliance threshold; it reads the
+   rule data.
 4. **Markets and verticals.** Adding a market or vertical is a config + seed change, not a
    code change: add the `Market` / `Vertical` value, its `MARKET_PROFILES` / `markets:`
    entry (residency region + locales), and its seed rules. The engines do not branch on

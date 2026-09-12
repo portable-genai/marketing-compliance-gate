@@ -321,7 +321,7 @@ def rules(
         "banking", "--vertical", "-v", help="Vertical: banking | online_retail."
     ),
 ) -> None:
-    """List the rules in force for a market and vertical (the rule KB)."""
+    """List the rules in force for a market and vertical, and the pack version serving them."""
     from ..api.deps import get_container
     from ..domain.models import Market, Vertical
 
@@ -329,7 +329,11 @@ def rules(
         return get_container().rule_provider.rule_set(Market(market), Vertical(vertical))
 
     rule_set = _run("rules", go)
-    typer.secho(f"\nRULE SET: {market}/{vertical}  ({len(rule_set.rules)} rule(s))", bold=True)
+    version = rule_set.version or "unknown"
+    typer.secho(
+        f"\nRULE SET: {market}/{vertical}  ({len(rule_set.rules)} rule(s), pack {version})",
+        bold=True,
+    )
     for r in rule_set.rules:
         tag = f"{r.kind.value}/{r.check.value}/{r.severity.value}"
         typer.echo(f"  - {r.id} [{tag}] {r.description}")

@@ -24,7 +24,7 @@ class LocalToolCatalogAdapter:
             ),
             "search_rules": ToolSpec(
                 name="search_rules",
-                description="Search the per-market, per-vertical compliance rule KB.",
+                description="Search the per-market, per-vertical compliance rule set.",
                 input_schema={"type": "object", "properties": {"q": {"type": "string"}}},
             ),
         }

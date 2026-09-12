@@ -1,16 +1,21 @@
-"""Local rule-provider adapter (RuleProviderPort) — SQLite FTS5 rule KB.
+"""Local rule-provider adapter (RuleProviderPort) — SQLite FTS5 over the bundled rule pack.
 
-The ``local`` profile's stand-in for **Gemini API File Search** over the per-market,
-per-vertical compliance rule KB (whose GCP adapter is File Search, and whose platform
-adapter is the shared A2 Enterprise KB): a ``sqlite3`` database with an **FTS5** virtual
-table over the seeded fictional rules, queried with BM25 for the ``search`` lookup. It is
-SDK-free, deterministic and seedable, so the same rules ground the offline CLI run and the
-unit tests. There is no Google emulator for File Search, so this path is unconditional.
+The ``local`` profile's rule source: a ``sqlite3`` database with an **FTS5** virtual table
+over the bundled fictional rule pack (``_seed.py``), queried with BM25 for the ``search``
+lookup. It is SDK-free, deterministic and seedable, so the same rules ground the offline CLI
+run and the unit tests. The managed profile serves the SAME pack through
+:class:`~marketing_compliance_gate.adapters.bundled.rules.BundledRulePackAdapter`, which is
+this class held in memory; the ``platform`` adapter is the HTTP client to the shared
+``enterprise-knowledge-base``.
 
 ``rule_set`` returns the full, fully-typed :class:`RuleSet` for a (market, vertical) so the
 deterministic :class:`RuleEngine` can evaluate it. ``search`` returns the subset whose text
 matches a query string (a KB-style lookup the LLM/agent can call as a governed tool). The
 rules themselves are config + seed; adding a market/vertical is a seed change, not code.
+
+Every :class:`RuleSet` served carries the version of the pack it was seeded from. A store
+re-seeded through :meth:`seed` with rules of unstated provenance serves ``version=""``, so a
+test double can never pass for the bundled pack.
 """
 
 from __future__ import annotations
@@ -32,7 +37,7 @@ from ...domain.models import (
     SourceType,
     Vertical,
 )
-from ._seed import ALL_RULES
+from ._seed import ALL_RULES, RULE_PACK_VERSION
 
 _DEFAULT_DB_DIR = Path.home() / ".marketing_compliance_gate"
 _DEFAULT_DB_PATH = _DEFAULT_DB_DIR / "rules.db"
@@ -56,8 +61,12 @@ class LocalRuleProviderAdapter:
         self._lock = threading.RLock()
         self._conn = self._connect(db_path)
         self._init_schema()
+        #: The version of the pack the index holds. An index found already populated on disk
+        #: is of unknown provenance until re-seeded, so it reports no version rather than
+        #: claiming the current one.
+        self._version = ""
         if self._is_empty():
-            self.seed(ALL_RULES)
+            self.seed(ALL_RULES, version=RULE_PACK_VERSION)
 
     # ------------------------------------------------------------------ #
     # Connection / schema
@@ -105,11 +114,22 @@ class LocalRuleProviderAdapter:
     # ------------------------------------------------------------------ #
     # Seeding
     # ------------------------------------------------------------------ #
-    def seed(self, rules: tuple[Rule, ...] | list[Rule]) -> int:
-        """Replace the index contents with ``rules`` (deterministic test/CLI seed)."""
+    def seed(self, rules: tuple[Rule, ...] | list[Rule], *, version: str = "") -> int:
+        """Replace the index contents with ``rules`` (deterministic test/CLI seed).
+
+        ``version`` is the pack revision the rules came from and is stamped on every
+        :class:`RuleSet` served afterwards. It defaults to empty because a caller seeding an
+        arbitrary rule list is not serving the bundled pack and must not say it is.
+        """
         with self._lock:
             self._conn.execute("DELETE FROM rules")
+            self._version = version
             return self._insert(list(rules))
+
+    @property
+    def pack_version(self) -> str:
+        """The revision of the rule pack this store currently serves (empty if unknown)."""
+        return self._version
 
     def _insert(self, rules: list[Rule]) -> int:
         rows = []
@@ -163,6 +183,7 @@ class LocalRuleProviderAdapter:
             market=market,
             vertical=vertical,
             rules=tuple(self._row_to_rule(row) for row in rows),
+            version=self._version,
         )
 
     def search(self, market: Market, vertical: Vertical, text: str) -> RuleSet:
@@ -184,6 +205,7 @@ class LocalRuleProviderAdapter:
             market=market,
             vertical=vertical,
             rules=tuple(self._row_to_rule(row) for row in rows),
+            version=self._version,
         )
 
     # ------------------------------------------------------------------ #

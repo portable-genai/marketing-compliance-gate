@@ -1,14 +1,21 @@
-"""Built-in, OBVIOUSLY-FICTIONAL synthetic seed for the ``local`` profile.
+"""The bundled, versioned, OBVIOUSLY-FICTIONAL compliance rule pack.
 
-This is the offline rule KB that makes a local run grounded out of the box: the
-per-market, per-vertical advertising + consumer-protection + consent rule sets, spanning
-BOTH verticals (banking AND online retail) across ALL THREE markets (JP, AU, SG). The
-rule ids and authority titles are illustrative and obviously synthetic; nothing here is
-legal advice or a verbatim statute. Every demo URL points at ``example.test``.
+This is the rule source every profile that serves rules reads: the per-market, per-vertical
+advertising + consumer-protection + consent rule sets, spanning BOTH verticals (banking AND
+online retail) across ALL THREE markets (JP, AU, SG). The ``local`` profile indexes it into
+SQLite FTS5 and the ``gcp`` profile serves it in-memory through the bundled-pack adapter, so
+a deployment needs no managed rule store and a review on the deployment fires exactly the
+rules a review on a laptop fires. The rule ids and authority titles are illustrative and
+obviously synthetic; nothing here is legal advice or a verbatim statute. Every demo URL
+points at ``example.test``.
 
-The data is keyed by (market, vertical) so the local RuleProviderPort serves vertical-
-and market-specific rules, proving D6 is generic and APAC without any hard-coded branch
-in the rule engine. Real markets cited as the *frame* for the synthetic rules:
+:data:`RULE_PACK_VERSION` is the pack's version, stamped on every :class:`RuleSet` the
+adapters serve and recorded on every review's audit event, so a finding is traceable to the
+revision of the rules that produced it. Bump it with every change to the rules below.
+
+The data is keyed by (market, vertical) so the RuleProviderPort serves vertical- and
+market-specific rules, proving D6 is generic and APAC without any hard-coded branch in the
+rule engine. Real markets cited as the *frame* for the synthetic rules:
 
 * JP — Act on Specified Commercial Transactions; Premiums and Representations Act; APPI.
 * AU — Australian Consumer Law / ASIC guidance; Privacy Act (APPs).
@@ -36,6 +43,10 @@ from ...domain.models import (
 )
 
 _Key = tuple[Market, Vertical]
+
+#: The version of the bundled rule pack. Date-shaped like the green-claims pack's
+#: ``version``; a change to any rule below is a new version.
+RULE_PACK_VERSION = "2026-09-12"
 
 
 def _cit(rule_id: str, title: str, authority: str) -> Citation:
@@ -400,13 +411,14 @@ _RULES: dict[_Key, tuple[Rule, ...]] = {
 
 
 def rule_sets() -> dict[_Key, RuleSet]:
-    """Materialise the seeded rule sets keyed by (market, vertical)."""
+    """Materialise the bundled rule sets keyed by (market, vertical), version stamped."""
     return {
-        key: RuleSet(market=key[0], vertical=key[1], rules=rules) for key, rules in _RULES.items()
+        key: RuleSet(market=key[0], vertical=key[1], rules=rules, version=RULE_PACK_VERSION)
+        for key, rules in _RULES.items()
     }
 
 
-# Flat list of every seeded rule, for the SQLite FTS5 local store.
+# Flat list of every bundled rule, for the rule-provider adapters to index.
 ALL_RULES: tuple[Rule, ...] = tuple(rule for rules in _RULES.values() for rule in rules)
 RULE_SETS: dict[_Key, RuleSet] = rule_sets()
 
