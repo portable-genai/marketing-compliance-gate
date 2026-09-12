@@ -13,6 +13,11 @@ API_APP := marketing_compliance_gate.api.app:app
 API_HOST ?= 127.0.0.1  # no-auth local dev binds loopback; override deliberately
 API_PORT ?= 8105
 UI_DIR := ui
+# The shape the console actually ships in: mounted under the portal's sub-path, calling its API
+# same-origin through that prefix. Both are BUILD-time inputs to Next.js, so this is a different
+# artefact from the default build and `ui-check` proves both.
+UI_BASE_PATH ?= /apps/marketing-compliance-gate
+UI_API_BASE  ?= /apps/marketing-compliance-gate/api
 DEMO_PORT ?= 8115
 TF_DIR := infra/terraform
 
@@ -80,7 +85,7 @@ gate: lint format typecheck test eval eval-narrative evals-doc-check demo-selfte
 ui-install: ## Install the console's locked dependencies.
 	npm ci --prefix $(UI_DIR)
 
-ui-check: ## The console gate: types, CSP unit tests, build, and a REAL hydration check.
+ui-check: ## The console gate: types, CSP tests, then build + HYDRATION in the default AND the embedded shape.
 	npm --prefix $(UI_DIR) run lint
 	npm --prefix $(UI_DIR) test
 	NEXT_TELEMETRY_DISABLED=1 npm --prefix $(UI_DIR) run build
@@ -89,6 +94,14 @@ ui-check: ## The console gate: types, CSP unit tests, build, and a REAL hydratio
 	# the page hydrates or is dead markup, so only starting the built server and reading the
 	# served script tags can tell the two apart. See ui/scripts/assert-hydratable.mjs.
 	npm --prefix $(UI_DIR) run assert-hydratable
+	# And again in the shape that actually ships. The base path and the API base are BUILD-time
+	# inputs to Next, so the embedded console is a DIFFERENT artefact and a green default build
+	# says nothing about it: a sibling's `docker build ui` failed six CSP assertions on a commit
+	# whose own ui-check was green, because only the default shape was ever built.
+	NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_BASE_PATH=$(UI_BASE_PATH) NEXT_PUBLIC_API_BASE=$(UI_API_BASE) \
+		npm --prefix $(UI_DIR) run build
+	NEXT_PUBLIC_BASE_PATH=$(UI_BASE_PATH) NEXT_PUBLIC_API_BASE=$(UI_API_BASE) \
+		npm --prefix $(UI_DIR) run assert-hydratable
 
 demo: ## Offline demo: run the review flow + render the static audit-first HTML (scripts/out).
 	MKT_GOV_PROFILE=local PYTHONPATH=src $(BIN)/python scripts/demo.py
