@@ -38,7 +38,7 @@ adapters selected by `MKT_GOV_PROFILE`:
 | Profile | Adapter | How identity is established |
 |---|---|---|
 | `local` | `LocalPersonaIdentityAdapter` | Seeded dev persona chosen by the `X-Dev-Persona` header (default = first persona). No IdP, no AD/LDAP. For demos and tests. |
-| `gcp`, `platform` | `IapIdentityAdapter` | Verifies the GCP Identity-Aware Proxy assertion (`x-goog-iap-jwt-assertion`): signature, audience (`MKT_GOV_IAP_AUDIENCE`), issuer, expiry. Subject from `email`/`sub`; tenant from `MKT_GOV_IAP_TENANT_DOMAINS_JSON` (or `MKT_GOV_IAP_MACHINE_TENANTS_JSON` for a service account), else `hd`. The assertion is never logged. |
+| `gcp`, `platform` | `IapIdentityAdapter` | Verifies the GCP Identity-Aware Proxy assertion, read from either name it travels under (see 1a below): signature, audience (`MKT_GOV_IAP_AUDIENCE`), issuer, expiry. Subject from `email`/`sub`; tenant from `MKT_GOV_IAP_TENANT_DOMAINS_JSON` (or `MKT_GOV_IAP_MACHINE_TENANTS_JSON` for a service account), else `hd`. The assertion is never logged. |
 | `onprem` | `OnPremIdentityAdapter` | Fail-fast placeholder: implement verification against the client's own enterprise IdP (OIDC/SAML) and map the verified claims to a `Principal`. |
 
 The seeded local personas (reviewer, approver, auditor, and a cross-tenant user) let you
@@ -63,9 +63,27 @@ location /compliance/api/ {
     proxy_pass http://compliance-api:8105/;             # the FastAPI backend
     proxy_set_header Host $host;
     # The edge (IAP / your gateway) injects the verified identity header here; the backend
-    # re-verifies it. Do NOT let a client set x-goog-iap-jwt-assertion from outside the edge.
+    # re-verifies it. Do NOT let a client set an identity header from outside the edge.
 }
 ```
+
+**On GCP, this proxy is itself a Cloud Run service, and that changes which header name the
+backend must accept.** `x-goog-*` is Google's reserved namespace; the serverless frontend
+strips the whole namespace from every request entering a Cloud Run service, so the reverse
+proxy cannot forward the `x-goog-iap-jwt-assertion` header IAP handed it at the outer edge --
+only the platform can set a reserved header, and the frontend removes it one hop before this
+backend would see it. A backend that reads only that name answers `401` to every authenticated
+caller once it sits behind such a proxy, with the audience, the tenant map and the machine map
+all correct and none of them ever read: this is exactly the defect found in the sibling
+`compliance-advisory` and `cio-advisory` deployments (`org-metadata/docs/plans/open-backlog.md`,
+"forty-six repositories read the one assertion header an embedding host can never forward").
+
+So the proxy must also forward the assertion under a name outside that namespace --
+`x-portal-iap-assertion` is the one `journey-portal` uses -- and `IapIdentityAdapter` reads
+either name through `hex_service_kit.federation.select_assertion`, preferring the edge-injected
+one when both are present. Either name takes the identical verification path: the fallback is
+transport, not a second trust path, and pinned as such by
+`tests/unit/test_embedded_assertion_transport.py`.
 
 ### 1b. Mount the console under the sub-path and drop its chrome
 
