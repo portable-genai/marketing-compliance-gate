@@ -155,15 +155,28 @@ Answer `yes` when init offers to copy the existing state into the bucket. Starti
 prefix instead plans the database and the key ring as new, and both creates fail because both
 already exist. Keep the local file until the migrated plan shows none of those creates.
 
-Build and push the container before apply, then resolve the immutable digest and put the
-regional `@sha256:` URI in `terraform.tfvars` (tags are deliberately refused):
+`artifact_registry.tf` creates the repository both of this application's images are promoted
+into, so the push target below is a path this Terraform owns rather than one somebody created by
+hand. It is the `image_registry` output: `REGION-docker.pkg.dev/PROJECT/marketing-compliance-gate`,
+regional, CMEK-encrypted under this stack's key, and immutably tagged. **Apply the registry before
+the first push**, because there is nowhere to push to until it exists.
+
+Build and push the container, then resolve the immutable digest and put the regional `@sha256:`
+URI in `terraform.tfvars` (tags are deliberately refused):
 
 ```bash
-gcloud builds submit --tag asia-southeast1-docker.pkg.dev/PROJECT/mkt/marketing-compliance-gate:0.1.0
+gcloud builds submit --tag asia-southeast1-docker.pkg.dev/PROJECT/marketing-compliance-gate/api:0.1.0
 gcloud artifacts docker images describe \
-  asia-southeast1-docker.pkg.dev/PROJECT/mkt/marketing-compliance-gate:0.1.0 \
+  asia-southeast1-docker.pkg.dev/PROJECT/marketing-compliance-gate/api:0.1.0 \
   --format='value(image_summary.fully_qualified_digest)'
 ```
+
+An embedded installation pushes the console image to `.../marketing-compliance-gate/ui` in the
+same repository and hands both digests to the portal's `embedded_apps` entry; it sets no
+`container_image` here, because the portal runs the API itself. Tags are immutable, so a release
+tag cannot be re-pointed at different bytes after a reviewer approved it, and there is no cleanup
+policy: the deployment pins digests, so deleting an image is a deliberate operator action rather
+than something a timer does to a running deployment.
 
 Deployment order is: provision/associate the Shared VPC; apply `marketing-compliance-gate` in dry-run as the sole
 perimeter owner; pass `marketing-compliance-gate`'s `service_url` and `s2s_audience` outputs to `next-best-action`; apply `next-best-action` as a

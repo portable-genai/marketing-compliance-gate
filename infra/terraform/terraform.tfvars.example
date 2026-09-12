@@ -35,8 +35,8 @@ standalone_service_enabled = true
 org_id           = "123456789012"
 access_policy_id = "987654321098"
 
-# Cloud Run image (Artifact Registry, in the residency region).
-container_image = "asia-southeast1-docker.pkg.dev/acme-mkt-governance-sg-prod/mkt/marketing-compliance-gate@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# Cloud Run image: a digest in the registry artifact_registry.tf creates, in the residency region.
+container_image = "asia-southeast1-docker.pkg.dev/acme-mkt-governance-sg-prod/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 # Managed next-best-action -> marketing-compliance-gate consent hop. The same audience is passed to next-best-action as its
 # consent_store_audience; only this exact next-best-action Workload Identity may invoke the service.

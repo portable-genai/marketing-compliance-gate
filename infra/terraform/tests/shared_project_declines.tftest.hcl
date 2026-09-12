@@ -101,7 +101,7 @@ run "the_next_best_action_topology_still_plans_whole" {
   variables {
     worm_locked                    = true
     standalone_service_enabled     = true
-    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/mkt/marketing-compliance-gate@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
     shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
     s2s_audience                   = "https://mkt6-consent.internal.example"
