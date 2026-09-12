@@ -12,7 +12,9 @@ we contact THIS data subject, for THIS purpose, on THIS channel, right now?". It
 duplicate the rule engine, it feeds it: the engine resolves which purposes the subject's
 stored records grant at ``as_of`` and hands that set to the SAME rule engine's consent path
 (:meth:`RuleEngine.consent_checks_for`), so the market's consent rules and their citations
-are the ones that decide, exactly as they do on the asset path.
+are the ones that decide, exactly as they do on the asset path. The asset path reaches this
+module too: a review reads the records of the subject its ``audience_subject_id`` names, so the
+two halves ask different questions of one set of stored facts rather than of two.
 
 What lives here
 ---------------
@@ -541,9 +543,11 @@ class ConsentEngine:
         """Every purpose the subject's records actually grant at ``as_of``, sorted.
 
         This is the bridge into the existing rule engine: it is exactly the shape
-        :meth:`RuleEngine.consent_checks_for` takes, which is what the asset-review path
-        derives from ``MarketingAsset.granted_consents``. One engine, two sources of truth
-        about who granted what.
+        :meth:`RuleEngine.consent_checks_for` takes, and since 2026-09-12 it is the ONLY way
+        consent reaches that engine. The asset-review path calls this too, for the subject its
+        ``audience_subject_id`` names; it used to derive the set from a ``granted_consents``
+        tuple on the asset, which let a caller state its own consent. One engine, one store,
+        two questions about who granted what.
         """
         purposes = {r.purpose for r in snapshot.records}
         granted = [p for p in sorted(purposes) if self.resolve_grant(p, snapshot, as_of).granted]
