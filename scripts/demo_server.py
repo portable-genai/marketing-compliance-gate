@@ -48,7 +48,15 @@ class DemoSession:
         service = scenario._service(container)  # real services over the in-memory local stack
         self.reviews = []
         for asset in scenario._SCENARIOS:
-            review = service.review(ReviewRequest(asset=asset), actor="demo")
+            # The tenant and the instant come from the scenario module, so the served walkthrough
+            # resolves each asset's audience against the SAME stored consent records the CLI demo
+            # does, at the same pinned moment. Nothing here states a consent.
+            review = service.review(
+                ReviewRequest(asset=asset),
+                actor="demo",
+                tenant=scenario._DEMO_TENANT,
+                as_of=scenario._CONSENT_AS_OF,
+            )
             self.reviews.append(to_jsonable(review))
         pending = container.review_router.outbox.pending()
         # Keep the routed human-review-console maker-checker records themselves, not just their count, so the

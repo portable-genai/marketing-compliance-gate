@@ -2,10 +2,11 @@
 """Render the D6 audit-first console from the demo JSON into static HTML pages.
 
 Server-side, dependency-free rendering of a cited :class:`Review` (outcome, the findings
-with their severity / rule / evidence / remediation and provenance, the consent checks,
-the rule citations, and the maker-checker "human review required" banner). It reuses the
-exact palette of the thin Next.js console so screenshots match the live UI, and runs
-entirely offline over the obviously-fictional synthetic reviews written by ``scripts/demo.py``.
+with their severity / rule / evidence / remediation and provenance, the consent checks and
+WHOSE stored records decided them, the rule citations, and the maker-checker "human review
+required" banner). It reuses the exact palette of the thin Next.js console so screenshots
+match the live UI, and runs entirely offline over the obviously-fictional synthetic reviews
+written by ``scripts/demo.py``.
 
     PYTHONPATH=src python scripts/demo.py
     PYTHONPATH=src python scripts/render_review_ui.py scripts/out
@@ -226,8 +227,32 @@ def render_review(data: dict[str, Any]) -> str:
             f"<span class='muted'>· rule {esc(c.get('rule_id'))}</span></div>"
             f"<div style='color:{color};font-weight:700'>{esc(state)}</div></div>"
         )
+    # Where the consent came from, shown above the checks rather than left implied. A reader
+    # who cannot see whose records were read cannot tell a granted check from an asserted one,
+    # and until 2026-09-12 it WAS asserted: the request carried the purposes. The hooks are the
+    # evidence the served page actually says so.
+    source = data.get("consent_source") or {}
+    subject = str(source.get("subject_id") or "")
+    reason = str(source.get("reason") or "")
+    records = int(source.get("records_read") or 0)
+    purposes = [str(x) for x in (source.get("granted_purposes") or ())]
+    if not subject:
+        provenance = "No audience subject named, so no consent records were read."
+    elif reason:
+        provenance = f"Subject {subject}: {reason}."
+    else:
+        provenance = (
+            f"Subject {subject}: {records} stored record(s) read from the consent and "
+            f"preference store, granting {', '.join(purposes) or 'no purpose'}."
+        )
     consent = _panel(
         "Consent checks",
+        f"<div class='muted' data-consent-source-subject='{esc(subject)}' "
+        f"data-consent-source-records='{records}' "
+        f"data-consent-source-purposes='{esc(','.join(purposes))}' "
+        f"data-consent-source-reason='{esc(reason)}' "
+        f"data-consent-source-read='{str(not reason and bool(subject)).lower()}'>"
+        f"{esc(provenance)}</div>"
         f"<div data-consent-count='{len(consent_rows)}' "
         f"data-consent-missing='{missing_consent}'>"
         + ("".join(consent_rows) or "<div class='muted'>none</div>")

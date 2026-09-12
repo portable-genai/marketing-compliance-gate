@@ -134,6 +134,20 @@ def _echo_review(review: Review) -> None:
 
     if review.consent_checks:
         typer.secho("\n  Consent checks:", bold=True)
+        # Where the consent came from, printed before the checks rather than left implied. A
+        # granted check and an asserted one read identically, and until 2026-09-12 this was an
+        # asserted one: the request carried the purposes.
+        source = review.consent_source
+        if not source.subject_id:
+            typer.echo("    read: no audience subject named, so no consent records were read")
+        elif source.reason:
+            typer.echo(f"    read: {source.subject_id} — {source.reason}")
+        else:
+            granted = ", ".join(source.granted_purposes) or "no purpose"
+            typer.echo(
+                f"    read: {source.subject_id} — {source.records_read} stored record(s), "
+                f"granting {granted}"
+            )
         for chk in review.consent_checks:
             state = "granted" if chk.granted else "MISSING"
             typer.echo(f"    - {chk.purpose}: {state} (rule {chk.rule_id})")
@@ -223,11 +237,26 @@ def review(
     field: list[str] = typer.Option(  # noqa: B008 - Typer's documented Option-in-default idiom
         None, "--field", "-f", help="Structured field as key=value (repeatable)."
     ),
-    consent: list[str] = typer.Option(  # noqa: B008 - Typer Option-in-default idiom
-        None, "--consent", "-c", help="A granted consent purpose (repeatable)."
+    subject: str = typer.Option(
+        "",
+        "--subject",
+        "-s",
+        help="The audience subject id whose STORED consent applies (e.g. subj-000101).",
+    ),
+    tenant: str = typer.Option(
+        "demo-brand", "--tenant", help="Tenant whose consent records are read (local only)."
     ),
 ) -> None:
-    """Review a Campaign / Creative / Offer against its per-market, per-vertical rule set."""
+    """Review a Campaign / Creative / Offer against its per-market, per-vertical rule set.
+
+    There is no option for asserting consent, and that is the point: ``--subject`` names whose
+    records to read and the consent and preference store answers. A subject nobody named, or
+    one with no record on file, grants nothing and fails the market's consent rules.
+
+    ``--tenant`` is a convenience for the offline local profile, where there is no IdP, exactly
+    as it is on ``substantiate``. Over HTTP the tenant is always the verified principal's and
+    can never be supplied by the caller.
+    """
     from ..api.deps import make_review_service
     from ..domain.models import AssetType, Market, MarketingAsset, ReviewRequest, Vertical
 
@@ -245,10 +274,12 @@ def review(
             market=Market(market),
             vertical=Vertical(vertical),
             fields=fields,
-            granted_consents=tuple(consent or ()),
+            audience_subject_id=subject,
             submitted_by=_CLI_ACTOR,
         )
-        return make_review_service().review(ReviewRequest(asset=asset), actor=_CLI_ACTOR)
+        return make_review_service().review(
+            ReviewRequest(asset=asset), actor=_CLI_ACTOR, tenant=tenant
+        )
 
     result = _run("review", go)
     _echo_review(result)

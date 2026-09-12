@@ -24,13 +24,32 @@ retrieved from the `enterprise-knowledge-base` governed KB (or the local seed of
 
 ### How is customer PII and consent handled?
 
-`marketing-compliance-gate` reviews marketer-authored asset copy and rule text; it does **not** ingest, index or
-store customer PII or per-customer consent records. `MarketingAsset.granted_consents` is a
-tuple of consent-purpose labels (which permissions the campaign asserts it holds), and the
-rule engine's `ConsentCheck` verifies the asset's asserted consents against what the rule
-requires, it is not a customer-data store. So there is no PII de-identification boundary in
-this repo by design (C2 / C3 / C4 are N-A in [`docs/practices-audit.md`](../practices-audit.md)).
-The runtime guardrail itself is the sibling `agent-guardrail-gateway`, consumed on every review.
+Asset copy is marketer-authored and is not expected to carry customer PII; if your fork submits
+copy that does, add a redaction step, because `AuditEvent` stores the raw prompt and response.
+
+Consent is different, and this repo **is** the store for it. The consent and preference store
+here holds per-subject consent records, channel preferences, frequency caps and suppression
+entries (`ports/consent.py`, `domain/consent.py`), because
+`marketing-compliance-gate` is the catalog's consent authority and the mandatory dependency of
+the proactive-outreach system that consumes it. So the PII boundary is real and it is enforced
+rather than declared:
+
+- **A review READS consent; it never accepts one.** `MarketingAsset` carries an
+  `audience_subject_id` and no consent at all. The review resolves that subject's stored records
+  through `ConsentStorePort` under the VERIFIED tenant, and the market's `CONSENT_REQUIRED` rules
+  decide from those. A subject with no record on file grants nothing: silence is a refusal, never
+  implied consent. Until 2026-09-12 the asset carried a free-text consent list instead, which
+  meant the gate could be told any permission by typing it.
+- **Tenant isolation is server-side and fail-closed** (C2): the tenant comes from the resolved
+  `Principal`, the store filters on it, and a cross-tenant single-record read is a 403.
+- **Subject ids are pseudonymised before any durable sink** (C3):
+  `domain/consent.subject_ref` replaces them with a tenant-scoped SHA-256 reference, on the
+  consent store's own audit events and on every review's.
+- **A jurisdiction-pack PII gate plus an independent planted-identifier oracle** (C4) drive every
+  consent-derived audit and review payload across SG, JP and AU.
+
+See the C2 / C3 / C4 rows in [`docs/practices-audit.md`](../practices-audit.md). The runtime
+guardrail itself is the sibling `agent-guardrail-gateway`, consumed on every review.
 
 ### How is the work auditable / reproducible?
 

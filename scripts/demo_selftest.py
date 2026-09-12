@@ -129,6 +129,33 @@ def check_served() -> None:
             assert _hooks(page, "data-consent-granted") == [
                 str(bool(c["granted"])).lower() for c in consent_checks
             ]
+
+            # Whose STORED records decided those checks, in the served bytes. A granted check
+            # and an asserted one render identically, which is how the typed-consent hole
+            # survived every green check it ever passed: the request carried the purposes and
+            # the page said "granted". So the served provenance is held against the running
+            # app's own consent_source, and every granted check must name a purpose the store
+            # actually returned.
+            source = live["consent_source"]
+            read = not source["reason"] and bool(source["subject_id"])
+            assert _hook(page, "data-consent-source-read") == str(read).lower()
+            assert _hook(page, "data-consent-source-subject") == source["subject_id"]
+            assert _hook(page, "data-consent-source-records") == str(source["records_read"])
+            assert _hook(page, "data-consent-source-purposes") == ",".join(
+                source["granted_purposes"]
+            )
+            assert _hook(page, "data-consent-source-reason") == source["reason"]
+            granted_purposes = {p.casefold() for p in source["granted_purposes"]}
+            for check in consent_checks:
+                if check["granted"]:
+                    assert check["purpose"].casefold() in granted_purposes, (
+                        f"the served page shows consent {check['purpose']!r} as granted and the "
+                        f"store returned {sorted(granted_purposes)}"
+                    )
+            if not read:
+                assert not any(c["granted"] for c in consent_checks), (
+                    "no consent records were read, so nothing may be served as granted"
+                )
             assert _citation_count(page, "review") == len(live["citations"])
             served_sources = _hooks(page, "data-citation-source")
             for citation in live["citations"]:

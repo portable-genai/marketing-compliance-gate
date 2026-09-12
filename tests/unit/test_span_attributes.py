@@ -80,7 +80,9 @@ def _asset() -> MarketingAsset:
         market=Market.SG,
         vertical=Vertical.BANKING,
         fields={},
-        granted_consents=(),
+        # A seeded subject, so the review really reads the consent store on this path and the
+        # span guard covers a review that touched it rather than one that skipped it.
+        audience_subject_id="subj-000101",
     )
 
 
@@ -92,7 +94,8 @@ def _review_spans(container: Container) -> _RecordingTracer:
         guardrail=container.guardrail,
         tracer=tracer,
         audit=container.audit,
-    ).review(ReviewRequest(asset=_asset()), actor="span-test-bot (FICTIONAL)")
+        consent_store=container.consent_store,
+    ).review(ReviewRequest(asset=_asset()), actor="span-test-bot (FICTIONAL)", tenant="demo-brand")
     return tracer
 
 

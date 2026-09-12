@@ -38,7 +38,7 @@ export default function Page() {
   const [vertical, setVertical] = useState<Vertical>("banking");
   const [assetType, setAssetType] = useState<AssetType>("creative");
   const [fieldsText, setFieldsText] = useState("");
-  const [consentsText, setConsentsText] = useState("");
+  const [audienceSubjectId, setAudienceSubjectId] = useState("");
   const [assetId, setAssetId] = useState("camp-green-au-001");
   const [asOf, setAsOf] = useState("2026-08-05");
   const [review, setReview] = useState<Review | null>(null);
@@ -97,10 +97,9 @@ export default function Page() {
       market,
       vertical,
       fields: parseFields(fieldsText),
-      granted_consents: consentsText
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean),
+      // The subject whose consent records the backend reads. The console cannot state a
+      // consent, by design: it names whose record to look up and the store answers.
+      audience_subject_id: audienceSubjectId.trim(),
     };
   }
 
@@ -232,14 +231,20 @@ export default function Page() {
           />
 
           <label className="mb-1 block text-xs font-semibold text-ink-600">
-            Granted consents (comma-separated)
+            Audience subject id
           </label>
           <input
-            className="mb-3 w-full rounded-md border border-ink-200 px-2.5 py-1.5 text-sm"
-            value={consentsText}
-            onChange={(e) => setConsentsText(e.target.value)}
-            placeholder="e.g. marketing"
+            className="mb-1 w-full rounded-md border border-ink-200 px-2.5 py-1.5 text-sm"
+            data-testid="audience-subject-id"
+            value={audienceSubjectId}
+            onChange={(e) => setAudienceSubjectId(e.target.value)}
+            placeholder="e.g. subj-000101"
           />
+          <p className="mb-3 text-xs text-ink-500">
+            Whose consent applies. The review reads this subject&apos;s stored consent records
+            for your tenant; there is no field for stating a consent, and a subject with no
+            record on file grants nothing.
+          </p>
 
           <label className="mb-1 block text-xs font-semibold text-ink-600">Asset id</label>
           <input

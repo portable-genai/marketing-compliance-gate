@@ -41,7 +41,7 @@ re-implementing the concern.
 
 | Rule | Requirement | How `marketing-compliance-gate` satisfies it | Evidence |
 |------|-------------|---------------------|----------|
-| **R1** | Customer PII handling: `agent-guardrail-gateway` + DLP redaction | `marketing-compliance-gate` consumes the `agent-guardrail-gateway` for prompt-injection and unsafe-output screening. The consent authority keeps raw subject ids inside its tenant store, pseudonymizes them before audit, and gates that boundary with SG/JP/AU jurisdiction packs plus an independent planted-leak oracle. | `ports/safety.py`, `domain/services.py`, `domain/consent_service.py`, `eval/run_eval.py` |
+| **R1** | Customer PII handling: `agent-guardrail-gateway` + DLP redaction | `marketing-compliance-gate` consumes the `agent-guardrail-gateway` for prompt-injection and unsafe-output screening. The consent authority keeps raw subject ids inside its tenant store, pseudonymizes them through `domain/consent.subject_ref` before audit (on the consent store's events AND on every asset review's, which now reads a subject's records), and gates that boundary with SG/JP/AU jurisdiction packs plus an independent planted-leak oracle. | `ports/safety.py`, `domain/services.py`, `domain/consent.py`, `domain/consent_service.py`, `eval/run_eval.py` |
 | **R2** | Audit to `agent-observability` | Every review and approval writes an immutable WORM `AuditEvent`; the `platform` adapter posts to `agent-observability` `/v1/audit` | `adapters/gcp/cloud_logging_audit.py`, `adapters/platform/remote_audit.py` |
 | **R3** | Governed RAG via `enterprise-knowledge-base` | Every review is grounded in a VERSIONED rule source, and the version travels: `RuleSet.version` is stamped by the provider and recorded on the review's audit event. Under `gcp` and `local` that source is the rule pack bundled in the package, so a deployed review fires the rules the gate proved rather than whatever somebody uploaded to an index; under `platform` the same port is the HTTP client to the `enterprise-knowledge-base` governed KB | `ports/rules.py`, `adapters/bundled/rules.py`, `adapters/platform/remote_rules.py`, `tests/unit/test_gcp_rule_source_is_the_bundled_pack.py` |
 | **R4** | Register in `agent-registry` | The A2A AgentCard is published at `/.well-known/agent-card.json` and resolvable via `agent-registry`; the governed MCP tool catalog scopes access least-privilege | `agent/agent_card.py`, `api/app.py`, `adapters/platform/remote_registry.py`, `adapters/gcp/mcp_tool_catalog.py` |
@@ -54,11 +54,21 @@ re-implementing the concern.
 
 ## Customer identifiers stop at the consent-store boundary (R1, C3, C4)
 
-- **The review surface remains corporate; consent is a separate authority.** Marketing assets,
-  rules and substantiation evidence contain corporate material. The canonical consent store does
-  hold tenant-scoped subject ids so it can answer purpose/channel decisions, but those values do
-  not enter the LLM or durable audit. `ConsentService._subject_ref` replaces them with a
-  tenant-scoped SHA-256 reference at the audit boundary.
+- **Marketing assets and rules are corporate material; a subject id is not.** The consent store
+  holds tenant-scoped subject ids so it can answer purpose/channel decisions, and an asset review
+  names one so its consent findings can be read from that subject's records. Neither enters the
+  LLM or a durable audit sink: `domain/consent.subject_ref` replaces them with a tenant-scoped
+  SHA-256 reference at the boundary, on the consent store's own events and on every review's.
+- **A review READS consent; it never accepts one (2026-09-12).** `MarketingAsset` carries an
+  `audience_subject_id` and no consent. The review resolves the purposes that subject's stored
+  records grant under the VERIFIED tenant and the market's `CONSENT_REQUIRED` rules decide from
+  those, so a caller cannot state a permission and the deployment's seeded consent store is what
+  the gate actually applies. A subject with no record grants nothing: silence is a refusal, and
+  `Review.consent_source` distinguishes "checked and absent" from "never checked" so an auditor
+  can tell them apart. Until that date the asset carried a free-text consent list the console had
+  a box for, and the store was never read on the review path.
+  Evidence: `tests/unit/test_review_reads_consent_from_the_store.py`,
+  `ui/tests/consent-is-read-not-typed.test.mjs`, `tests/browser/test_served_demo_ui.py`.
 - **The privacy gate can go red.** The offline consent evaluation plants valid synthetic SG, JP
   and AU identifiers and drives decision, grant recording, grant confirmation, preference,
   suppression and send paths plus the outbound `human-review-console` review payload. It uses the matching

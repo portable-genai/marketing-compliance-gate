@@ -107,10 +107,19 @@ with the identity filled in, which grants it the consent store, the models and t
 3000) with `NEXT_PUBLIC_BASE_PATH=/apps/marketing-compliance-gate` and
 `NEXT_PUBLIC_API_BASE=/apps/marketing-compliance-gate/api` as build arguments.
 
-**The API's identity inputs.** `MKT_GOV_PROFILE=gcp`, `MKT_GOV_IAP_AUDIENCE`, and
+**The API's identity inputs.** `MKT_GOV_PROFILE=gcp`, `MKT_GOV_IAP_AUDIENCE`,
 `MKT_GOV_IAP_TENANT_DOMAINS_JSON` mapping each sign-in domain to the tenant the consent seed was
-loaded under. Without the map every verified user resolves to their own domain, and every consent
-snapshot comes back empty.
+loaded under, and `MKT_GOV_IAP_MACHINE_TENANTS_JSON` mapping each programmatic caller's EXACT
+service-account address to the same tenant. Without the maps a verified caller resolves to their
+own domain or to no tenant at all, and every consent read comes back empty.
+
+That is now load-bearing for the REVIEW route as well as the consent routes: a review carries an
+audience subject id and no consent, and reads that subject's records under the verified tenant,
+so an unmapped caller gets a non-compliant review on every asset whose market requires consent.
+The machine map is what stops the deployment's own end-to-end identity hitting that: a sibling
+service shipped an authorized surface that refused every machine caller because it resolved
+tenancy from a human's hosted domain alone. Key machines on the account, never the domain, since
+every account in a project shares one.
 
 ## Usage
 

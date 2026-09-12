@@ -39,7 +39,14 @@ def _rule(rule_id: str, check: CheckType, **kw) -> Rule:
     )
 
 
-def _asset(body: str = "", fields: dict | None = None, consents: tuple = ()) -> MarketingAsset:
+def _asset(body: str = "", fields: dict | None = None) -> MarketingAsset:
+    """An asset with NO consent of its own. There is no parameter for one, by design.
+
+    The asset used to carry a ``consents`` tuple that this file passed straight into the
+    engine's consent path. Consent is now resolved from a data subject's stored records before
+    the engine is called, so the granted-purpose set arrives as an explicit argument to
+    :meth:`RuleEngine.consent_checks_for` and the asset cannot influence it.
+    """
     return MarketingAsset(
         id="a",
         asset_type=AssetType.CREATIVE,
@@ -48,7 +55,6 @@ def _asset(body: str = "", fields: dict | None = None, consents: tuple = ()) -> 
         market=Market.SG,
         vertical=Vertical.BANKING,
         fields=fields or {},
-        granted_consents=consents,
     )
 
 
@@ -161,14 +167,37 @@ def test_consent_required_split_and_finding():
     )
     rs = RuleSet(Market.SG, Vertical.BANKING, (rule,))
     eng = _engine()
-    # check() ignores consent-kind rules; consent_checks() handles them.
+    # check() ignores consent-kind rules; consent_checks_for() handles them, from the purposes
+    # a subject's STORED records grant. An empty set is the fail-closed case, and it is also
+    # what every "no record on file" and "no tenant" path resolves to.
     assert eng.check(_asset(), rs) == ()
-    checks, findings = eng.consent_checks(_asset(consents=()), rs)
+    checks, findings = eng.consent_checks_for((), rs, asset=_asset())
     assert len(checks) == 1 and checks[0].required and not checks[0].granted
     assert findings[0].failed and findings[0].rule_kind is RuleKind.CONSENT
-    checks2, findings2 = eng.consent_checks(_asset(consents=("marketing",)), rs)
+    checks2, findings2 = eng.consent_checks_for(("marketing",), rs, asset=_asset())
     assert checks2[0].granted and checks2[0].satisfied
     assert not findings2[0].failed
+
+
+def test_a_consent_required_check_outside_a_consent_rule_fails_closed():
+    """An unmodelled rule shape cannot be answered from the copy, so it must not pass.
+
+    ``check()`` only skips CONSENT-kind rules, so rule DATA pairing this check with another
+    kind reaches the per-rule evaluator. It used to be answered there from the asset's own
+    ``granted_consents``, which is the very assertion that was removed. There is no honest
+    answer available at that layer, so it fails and says why.
+    """
+    rule = _rule(
+        "R-ODD",
+        CheckType.CONSENT_REQUIRED,
+        kind=RuleKind.CLAIM,
+        consent_purpose="marketing",
+    )
+    rs = RuleSet(Market.SG, Vertical.BANKING, (rule,))
+    findings = _engine().check(_asset(body="anything at all"), rs)
+    assert len(findings) == 1
+    assert findings[0].failed, "a consent check with no record to read must never pass"
+    assert "cannot be decided from the asset" in findings[0].evidence
 
 
 def test_findings_are_severity_ordered_failures_first():
@@ -222,7 +251,7 @@ def test_unknown_check_type_does_not_crash_only_known_types():
             ),
         )
         if ct is CheckType.CONSENT_REQUIRED:
-            checks, findings = _engine().consent_checks(_asset(), rs)
+            checks, findings = _engine().consent_checks_for((), rs, asset=_asset())
             assert findings  # produced a finding
         else:
             assert _engine().check(_asset(), rs)  # produced a finding

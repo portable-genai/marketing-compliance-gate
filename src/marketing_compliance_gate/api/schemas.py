@@ -4,13 +4,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..domain.models import AgentCard
 
 
 class AssetModel(BaseModel):
+    """The asset under review or assessment, at the HTTP boundary.
+
+    Extras are FORBIDDEN rather than ignored. The retired ``granted_consents`` field is the
+    reason: a caller still sending a consent it believes the gate applies must be refused with
+    the field named, because silently dropping it would leave that integration confident in a
+    permission the review never saw. Ignoring an unknown field is the quieter failure, not the
+    safer one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field("asset-1", description="Asset id.")
     asset_type: str = Field("creative", description="campaign | creative | offer.")
     title: str = Field("", description="Asset title.")
@@ -18,7 +29,19 @@ class AssetModel(BaseModel):
     market: str = Field("SG", description="Market: JP | AU | SG.")
     vertical: str = Field("banking", description="Vertical: banking | online_retail.")
     fields: dict[str, str] = Field(default_factory=dict)
-    granted_consents: list[str] = Field(default_factory=list)
+    # The asset names WHOSE consent applies, never what that consent is. A free-text
+    # ``granted_consents`` list used to sit here, which let a caller assert any permission it
+    # liked; the review reads the named subject's stored records instead and refuses when
+    # there are none. Empty names nobody, which grants nothing.
+    audience_subject_id: str = Field(
+        "",
+        description=(
+            "The audience data subject's stable id in the consent and preference store "
+            "(never a name). The review reads that subject's stored consent records; a "
+            "subject with no record on file grants nothing and fails the market's consent "
+            "rules."
+        ),
+    )
     submitted_by: str = ""
 
 

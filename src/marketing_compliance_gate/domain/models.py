@@ -288,8 +288,17 @@ class MarketingAsset:
     ``body`` is the human-readable marketing copy the claim/brand checks scan.
     ``fields`` holds structured metadata (e.g. ``{"apr": "4.50", "disclaimer": "..."}``
     for banking, or ``{"discount_pct": "70", "stock_on_hand": "0"}`` for retail) that
-    the permission / numeric checks evaluate. ``granted_consents`` lists the consent
-    purposes the audience has granted. All generic across verticals.
+    the permission / numeric checks evaluate. All generic across verticals.
+
+    ``audience_subject_id`` names the data subject the asset would be sent to, as the id the
+    consent and preference store files that subject's records under (``subj-000101`` and its
+    siblings in the local seed). **The asset carries no consent of its own.** It used to: a
+    ``granted_consents`` tuple the caller filled in, which meant a reviewer could assert any
+    consent to the gate simply by typing it, and the seeded regional consent store the rest of
+    this service maintains was never consulted. The review now reads the subject's stored
+    records through ``ConsentStorePort`` and the ``CONSENT_REQUIRED`` rules decide from those.
+    A subject nobody named, or one the store holds no record for, grants nothing: silence is
+    not consent, so such a review fails its market's consent rules rather than passing them.
     """
 
     id: str
@@ -299,7 +308,7 @@ class MarketingAsset:
     market: Market
     vertical: Vertical
     fields: dict[str, str] = field(default_factory=dict)
-    granted_consents: tuple[str, ...] = ()
+    audience_subject_id: str = ""
     submitted_by: str = ""
 
 
@@ -733,6 +742,32 @@ class ReviewRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class ConsentSource:
+    """Where the consent a review applied came from, so a reader can see it was not asserted.
+
+    The review's ``CONSENT_REQUIRED`` findings are decided from ``granted_purposes``, and this
+    records how that set was obtained: which subject was looked up, how many records the store
+    held for it, and, when nothing was read, why. ``reason`` is empty exactly when a record set
+    was read; any other value is a refusal to imply consent, not an error in the pipeline.
+
+    ``subject_id`` is the id the caller named, echoed back so the console can show whose
+    records decided the review. The audit event records the tenant-scoped pseudonym instead
+    (:func:`~marketing_compliance_gate.domain.consent.subject_ref`): a durable sink never
+    carries a raw subject id.
+    """
+
+    subject_id: str = ""
+    records_read: int = 0
+    granted_purposes: tuple[str, ...] = ()
+    reason: str = ""
+
+    @property
+    def read_from_store(self) -> bool:
+        """True exactly when the store was asked and answered for a named subject."""
+        return not self.reason
+
+
+@dataclass(frozen=True, slots=True)
 class Review:
     """A cited compliance review of one marketing asset — D6's top-level artifact.
 
@@ -749,6 +784,7 @@ class Review:
     outcome: ReviewOutcome
     findings: tuple[ClaimFinding, ...] = ()
     consent_checks: tuple[ConsentCheck, ...] = ()
+    consent_source: ConsentSource = field(default_factory=lambda: ConsentSource())
     summary: str = ""
     citations: tuple[Citation, ...] = ()
     approval: ApprovalRecord | None = None

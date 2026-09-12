@@ -27,15 +27,23 @@ MKT_GOV_PROFILE=local mkt-gov review \
 MKT_GOV_PROFILE=local mkt-gov review \
   "Lowest price guaranteed on everything!" -m AU -v online_retail --type offer -f discount_pct=90
 
-# A compliant release recommendation (no failing findings, still checker-gated):
+# A compliant release recommendation (no failing findings, still checker-gated). `-s` names the
+# AUDIENCE SUBJECT whose consent is read; there is no option for stating one. subj-000101 holds
+# an evidenced opt-in in the seeded consent store, so the market's consent rule passes on a
+# stored record. Drop the `-s` and the same copy fails it: no subject, no consent.
 MKT_GOV_PROFILE=local mkt-gov review \
   "Big savings this weekend on selected items." -m SG -v online_retail \
-  -f discount_pct=40 -f stock_on_hand=120 -c marketing
+  -f discount_pct=40 -f stock_on_hand=120 -s subj-000101
 ```
 
-Each review prints the findings (rule id, severity, evidence and fix), consent checks, cited
-rules and maker-checker "HUMAN REVIEW REQUIRED" banner. A compliant result is a release
-recommendation, not an auto-approval.
+Each review prints the findings (rule id, severity, evidence and fix), the consent checks and
+whose stored records decided them, cited rules and the maker-checker "HUMAN REVIEW REQUIRED"
+banner. A compliant result is a release recommendation, not an auto-approval.
+
+Try the refusals, because they are the point: `-s subj-000102` (withdrawn), `-s subj-000106`
+(asserted with nothing to show, still awaiting a checker) and `-s subj-000999` (no record at
+all) each fail the consent rule, and the printed reason says which of the three it was. An
+absent record is a refusal, never implied consent.
 
 ### 3. CLI: the green-claims gate
 

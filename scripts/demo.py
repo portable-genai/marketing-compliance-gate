@@ -20,7 +20,7 @@ Usage::
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from marketing_compliance_gate.api.deps import make_review_service
@@ -40,6 +40,25 @@ from marketing_compliance_gate.green_pack import pack_for
 
 _OUT = Path(__file__).resolve().parent / "out"
 
+#: The tenant whose records every review and every evidence read in this demo is scoped to.
+#: The consent and evidence seeds both file under it, so a demo that showed one and not the
+#: other would be two unrelated stores wearing one name.
+_DEMO_TENANT = "demo-brand"
+
+#: The seeded audience subjects the review scenarios point at (adapters/local/_consent_seed.py).
+#: NOTHING here states a consent: the review reads whatever these subjects have on file, which
+#: is the whole difference the demo is for. ``subj-000101`` holds an evidenced explicit opt-in;
+#: ``subj-000102`` withdrew; ``subj-000199`` is not in the store at all, so it is the refusal
+#: case: no record is not implied consent.
+_SUBJECT_GRANTED = "subj-000101"
+_SUBJECT_WITHDRAWN = "subj-000102"
+_SUBJECT_UNKNOWN = "subj-000199"
+
+#: The instant the subjects' consent records are resolved at. Pinned for the same reason the
+#: green-claims ``as_of`` is: a grant expires, and a demo aged against "today" would tell a
+#: different story next year.
+_CONSENT_AS_OF = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
+
 # Obviously-fictional synthetic assets: a non-compliant and a compliant case per vertical,
 # across all three markets, so the demo shows the rule engine and the maker-checker gate.
 _SCENARIOS = [
@@ -51,7 +70,7 @@ _SCENARIOS = [
         market=Market.SG,
         vertical=Vertical.BANKING,
         fields={},
-        granted_consents=(),
+        audience_subject_id=_SUBJECT_WITHDRAWN,
     ),
     MarketingAsset(
         id="au-bank-clean-offer",
@@ -61,7 +80,7 @@ _SCENARIOS = [
         market=Market.AU,
         vertical=Vertical.BANKING,
         fields={},
-        granted_consents=("marketing",),
+        audience_subject_id=_SUBJECT_GRANTED,
     ),
     MarketingAsset(
         id="sg-retail-bad-sale",
@@ -71,7 +90,7 @@ _SCENARIOS = [
         market=Market.SG,
         vertical=Vertical.ONLINE_RETAIL,
         fields={"discount_pct": "90"},
-        granted_consents=(),
+        audience_subject_id=_SUBJECT_UNKNOWN,
     ),
     MarketingAsset(
         id="jp-retail-clean-loyalty",
@@ -81,7 +100,7 @@ _SCENARIOS = [
         market=Market.JP,
         vertical=Vertical.ONLINE_RETAIL,
         fields={"discount_pct": "20", "stock_on_hand": "50"},
-        granted_consents=("marketing",),
+        audience_subject_id=_SUBJECT_GRANTED,
     ),
 ]
 
@@ -90,7 +109,7 @@ _SCENARIOS = [
 # seed in adapters/local/_seed.py, filed against the ``demo-brand`` tenant.
 _AS_OF = date(2026, 8, 5)
 _DEMO_PRINCIPAL = Principal(
-    subject="demo.reviewer@brand.example", tenant="demo-brand", source="local-persona:analyst"
+    subject="demo.reviewer@brand.example", tenant=_DEMO_TENANT, source="local-persona:analyst"
 )
 _OTHER_TENANT_PRINCIPAL = Principal(
     subject="user@other-tenant.example", tenant="other-brand", source="local-persona:other-tenant"
@@ -136,7 +155,12 @@ def _settings() -> Settings:
         logging=base.logging,
         agent_engine=base.agent_engine,
         green_claims=base.green_claims,
-        local=LocalSettings(db_path=":memory:", audit_path=":memory:", evidence_path=":memory:"),
+        local=LocalSettings(
+            db_path=":memory:",
+            audit_path=":memory:",
+            evidence_path=":memory:",
+            consent_path=":memory:",
+        ),
         markets=base.markets,
         adapters=base.adapters,
     )
@@ -204,11 +228,24 @@ def main() -> int:
     container = Container(_settings())
     service = _service(container)
     for asset in _SCENARIOS:
-        review = service.review(ReviewRequest(asset=asset), actor="demo")
+        review = service.review(
+            ReviewRequest(asset=asset),
+            actor="demo",
+            tenant=_DEMO_TENANT,
+            as_of=_CONSENT_AS_OF,
+        )
         print("=" * 78)
         print(f"REVIEW: {asset.title}  [{asset.market.value}/{asset.vertical.value}]")
         print(f"  outcome         : {review.outcome.value}")
         print(f"  review required : {review.requires_human_review}")
+        source = review.consent_source
+        read = (
+            f"{source.records_read} record(s) on file, granting "
+            f"{', '.join(source.granted_purposes) or 'nothing'}"
+            if source.read_from_store
+            else source.reason
+        )
+        print(f"  consent read    : {source.subject_id or '(no subject named)'} — {read}")
         for f in review.failing_findings:
             print(f"  FAIL [{f.severity.value}]: {f.rule_id} — {f.message}")
         print(f"  findings        : {len(review.findings)}  citations: {len(review.citations)}")

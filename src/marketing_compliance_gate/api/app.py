@@ -344,7 +344,7 @@ def _to_asset(body: ReviewRequestModel | SubstantiationRequestModel) -> Marketin
         market=Market(a.market),
         vertical=Vertical(a.vertical),
         fields=dict(a.fields),
-        granted_consents=tuple(a.granted_consents),
+        audience_subject_id=a.audience_subject_id,
         submitted_by=a.submitted_by,
     )
 

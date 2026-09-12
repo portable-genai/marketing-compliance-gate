@@ -13,8 +13,10 @@ Pipeline (each step wrapped in ``tracer.span``; audited at the end):
       guardrail.screen(INPUT over the asset body)   [blocked -> audit BLOCKED + raise]
       -> rule_provider.rule_set: load the (market, vertical) RuleSet
                                           [empty -> RuleSetEmptyError]
+      -> consent_store.snapshot(tenant, asset.audience_subject_id)
+                                          (the subject's STORED consent; never the request's)
       -> rule_engine.check(asset, rule_set)          (claim / permission / brand)
-      -> rule_engine.consent_checks(asset, rule_set) (consent)
+      -> rule_engine.consent_checks_for(granted, rule_set, asset=asset)  (consent)
       -> decide outcome + requires_human_review      (pure)
       -> llm.generate(summary narrative)             (narration only, over findings)
       -> assemble Review (+ pending ApprovalRecord)
@@ -24,6 +26,24 @@ Pipeline (each step wrapped in ``tracer.span``; audited at the end):
 ``approve`` is the checker half of maker-checker: it records a human's terminal decision
 on a previously-built review and writes it to the audit log.
 
+Consent is READ, never accepted (2026-09-12)
+--------------------------------------------
+The asset used to carry a ``granted_consents`` tuple, which a reviewer filled in: the gate
+could be told any consent simply by typing it, and the regional consent and preference store
+this same service maintains was never consulted on the review path. It is now the only source.
+``review`` resolves the purposes the asset's ``audience_subject_id`` has on file for the
+VERIFIED tenant through :class:`~marketing_compliance_gate.ports.consent.ConsentStorePort`, and
+the market's ``CONSENT_REQUIRED`` rules decide from those. Nothing in the request can influence
+the answer except which subject to look up.
+
+Four states, and three of them grant nothing: no subject named, no verified tenant, and a
+subject the store holds no record for all produce an empty purpose set, so the consent rules
+FAIL and the review is non-compliant and escalated. Silence is not consent. The store's own
+errors are not swallowed either: a review cannot honestly report "consent not granted" when it
+could not look, so a failing read travels to the caller instead of being rendered as a denial.
+``Review.consent_source`` records which of the four happened, and the audit event carries the
+subject's tenant-scoped pseudonym rather than the id.
+
 Pure domain code: no Google Cloud / ADK / FastAPI imports.
 """
 
@@ -32,8 +52,10 @@ from __future__ import annotations
 import contextlib
 import json
 from contextlib import nullcontext
+from datetime import datetime
 from typing import Any
 
+from .consent import ConsentEngine, subject_ref
 from .errors import GuardrailBlockedError, RuleSetEmptyError
 from .models import (
     ApprovalDecision,
@@ -41,6 +63,7 @@ from .models import (
     AuditEvent,
     ClaimFinding,
     ConsentCheck,
+    ConsentSource,
     Decision,
     Direction,
     GuardrailVerdict,
@@ -78,7 +101,9 @@ class ReviewService:
         guardrail: Any,
         tracer: Any,
         audit: Any,
+        consent_store: Any,
         engine: RuleEngine | None = None,
+        consent_engine: ConsentEngine | None = None,
         review_router: Any = None,
     ) -> None:
         self._rules = rule_provider
@@ -86,7 +111,16 @@ class ReviewService:
         self._guardrail = guardrail
         self._tracer = tracer
         self._audit = audit
+        # The consent and preference store, and it is REQUIRED rather than optional. An
+        # optional one would make the single most consequential input in this pipeline
+        # default to absent, and a review assembled without it would look exactly like a
+        # review whose subject granted nothing. Callers that cannot supply a store are
+        # callers that must not produce consent findings.
+        self._consent_store = consent_store
         self._engine = engine or RuleEngine()
+        # Resolves a snapshot's records into the purposes they actually grant at an instant.
+        # The same engine the consent store's own service uses, so "granted" means one thing.
+        self._consent_engine = consent_engine or ConsentEngine(rule_engine=self._engine)
         # Rule R8: when a review requires human review it is routed to the human-review-console
         # maker-checker
         # console, not left as a boolean. Optional so unit tests and the CLI can omit it; when
@@ -97,7 +131,22 @@ class ReviewService:
     # ------------------------------------------------------------------ #
     # Public API — the maker half
     # ------------------------------------------------------------------ #
-    def review(self, request: ReviewRequest, actor: str, tenant: str = "") -> Review:
+    def review(
+        self,
+        request: ReviewRequest,
+        actor: str,
+        tenant: str = "",
+        *,
+        as_of: datetime | None = None,
+    ) -> Review:
+        """Review one asset. ``tenant`` is the VERIFIED principal's, never the request's.
+
+        ``as_of`` is the instant the subject's consent records are resolved at. It exists for
+        the demo and the evaluation gate, which must reproduce the same verdict next quarter,
+        and it is deliberately NOT exposed on the HTTP route: a caller able to choose the
+        instant could resurrect a grant that has since expired, which is the typed-consent hole
+        in another spelling. Over HTTP a review is always decided at now.
+        """
         asset = request.asset
         actor = actor or request.actor or "service"
         with self._span("review.build", market=asset.market.value, vertical=asset.vertical.value):
@@ -110,8 +159,11 @@ class ReviewService:
                     "a compliance review must be grounded in a rule set"
                 )
 
+            consent_source = self._consent_source(asset, tenant, as_of or utcnow())
             findings = list(self._engine.check(asset, rule_set))
-            consent_checks, consent_findings = self._engine.consent_checks(asset, rule_set)
+            consent_checks, consent_findings = self._engine.consent_checks_for(
+                consent_source.granted_purposes, rule_set, asset=asset
+            )
             findings.extend(consent_findings)
             findings = self._order(findings)
 
@@ -134,9 +186,10 @@ class ReviewService:
                 citations=citations,
                 approval=ApprovalRecord(review_id=review_id, decision=ApprovalDecision.PENDING),
                 requires_human_review=requires_review,
+                consent_source=consent_source,
             )
             self._guard(summary, Direction.OUTPUT, actor)
-            self._record_review(review, actor, rule_pack_version=rule_set.version)
+            self._record_review(review, actor, rule_pack_version=rule_set.version, tenant=tenant)
             # Rule R8: hand an escalated review to the human-review-console. Routing is a
             # best-effort
             # hand-off after the durable audit ESCALATED record, never fatal to an already-
@@ -317,14 +370,60 @@ class ReviewService:
         except Exception:  # noqa: BLE001 - tracing must never break the pipeline
             return nullcontext()
 
-    def _record_review(self, review: Review, actor: str, *, rule_pack_version: str) -> None:
-        """Audit the review, naming the revision of the rule pack that produced it.
+    def _consent_source(self, asset: MarketingAsset, tenant: str, as_of: datetime) -> ConsentSource:
+        """Resolve the purposes the asset's audience has ON FILE. Fail-closed and total.
+
+        Three of the four outcomes grant nothing, and each says so rather than looking like
+        the fourth:
+
+        * no ``audience_subject_id``: nobody was named, so there is no record to read;
+        * no verified tenant: consent records are tenant-owned and a blank tenant owns none,
+          so the read is not attempted rather than issued and hoped to come back empty;
+        * a subject with no records: the store answered and holds nothing, which is the
+          REFUSAL the whole change is for. Silence is never read as permission;
+        * records on file: the consent engine resolves which purposes they grant at ``as_of``,
+          and those are the only purposes the rule engine will see.
+
+        A store that RAISES is not handled here on purpose. "Consent is not granted" and "the
+        consent store could not be read" are different statements, and rendering the second as
+        the first would let an outage quietly become a compliance verdict.
+        """
+        subject = asset.audience_subject_id.strip()
+        if not subject:
+            return ConsentSource(reason="no audience subject named on the asset")
+        if not tenant.strip():
+            return ConsentSource(
+                subject_id=subject,
+                reason="no verified tenant, so no tenant's consent records could be read",
+            )
+        snapshot = self._consent_store.snapshot(tenant.strip(), subject)
+        if not snapshot.records:
+            return ConsentSource(
+                subject_id=subject,
+                reason="the consent store holds no record for this subject",
+            )
+        return ConsentSource(
+            subject_id=subject,
+            records_read=len(snapshot.records),
+            granted_purposes=self._consent_engine.granted_purposes(snapshot, as_of),
+        )
+
+    def _record_review(
+        self, review: Review, actor: str, *, rule_pack_version: str, tenant: str
+    ) -> None:
+        """Audit the review, naming the rule pack and the consent the findings rested on.
 
         A finding is only as current as the rules it fired, so the audit event carries the
         pack version the provider stamped on the rule set. A provider that could not say
         which revision it served records an empty string, which is visible rather than a
         guess.
+
+        The consent half is recorded the same way, because "this asset is compliant" is a
+        claim about a person's permission: the event names how many records were read, which
+        purposes they granted, and, when none were, why. The subject appears only as its
+        tenant-scoped pseudonym; raw subject ids never enter a durable sink.
         """
+        source = review.consent_source
         self._audit.record(
             AuditEvent(
                 action="review",
@@ -340,6 +439,12 @@ class ReviewService:
                     "outcome": review.outcome.value,
                     "failing": str(len(review.failing_findings)),
                     "rule_pack_version": rule_pack_version,
+                    "consent_subject_ref": (
+                        subject_ref(tenant, source.subject_id) if source.subject_id else ""
+                    ),
+                    "consent_records_read": str(source.records_read),
+                    "consent_granted_purposes": ",".join(source.granted_purposes),
+                    "consent_not_read_because": source.reason,
                 },
             )
         )

@@ -1,3 +1,4 @@
+import { consentProvenance } from "@/lib/consent.mjs";
 import type { Review } from "@/lib/types";
 import { CitationList } from "./CitationList";
 
@@ -107,6 +108,9 @@ export function ReviewView({ review }: { review: Review }) {
       </Panel>
 
       <Panel title="Consent checks">
+        <p className="mb-2 text-xs text-ink-500" data-testid="consent-source">
+          {consentProvenance(review.consent_source)}
+        </p>
         {review.consent_checks.length === 0 ? (
           <div className="text-xs text-ink-400">none</div>
         ) : (
