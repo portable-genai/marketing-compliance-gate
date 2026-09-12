@@ -8,6 +8,16 @@ audience, issuer, expiry) and derives the :class:`Principal` server-side, so aut
 is configured ON the GCP service rather than hand-rolled in the app. The Google SDK imports
 are lazy (mirroring the other gcp adapters) so the SDK-free local/onprem profiles never
 import them, and the verified assertion is never logged.
+
+Behind an embedding host the assertion arrives under a SECOND name, and that is transport
+rather than trust. Google reserves ``x-goog-*`` and the serverless frontend strips the whole
+namespace from a request entering a service, so a host cannot forward the assertion IAP gave it
+under the standard name; it sends the same value as ``x-portal-iap-assertion`` as well, and this
+adapter reads either through the commons selection function. Both take the identical
+verification path. Reading only the reserved name is why `compliance-advisory` and
+`cio-advisory` answered 401 to every authenticated caller the day they were deployed as
+embedded apps, and this adapter carried the identical defect, found only by reading the source
+rather than by an execution against this app -- it has not been embedded yet.
 """
 
 from __future__ import annotations
@@ -20,8 +30,10 @@ from hex_service_kit.federation import (
     IAP_ASSERTION_HEADER,
     IAP_ISSUER,
     IAP_KEYS_URL,
+    PORTAL_ASSERTION_HEADER,
     FederationPolicy,
     principal_from_iap_claims,
+    select_assertion,
 )
 from hex_service_kit.identity import IdentityError as AssertionRefused
 
@@ -39,6 +51,11 @@ from ...ports.identity import VERIFIED, EndUserAuthUnavailableError
 #: ``verify_token`` does not check the issuer at all (``verify_oauth2_token`` is the wrapper
 #: that does), so this adapter checks it itself against the kit's value.
 _ASSERTION_HEADER = IAP_ASSERTION_HEADER
+#: The SAME assertion, forwarded by a same-origin embedding host under a name Google's
+#: serverless frontend does not reserve and therefore does not strip. A FALLBACK for TRANSPORT,
+#: never an alternative trust path: what arrives under it is verified identically, so a caller
+#: gains nothing by choosing it. See ``select_assertion`` below, which reads either.
+_PORTAL_ASSERTION_HEADER = PORTAL_ASSERTION_HEADER
 _IAP_KEYS_URL = IAP_KEYS_URL
 _IAP_ISSUER = IAP_ISSUER
 
@@ -182,13 +199,22 @@ class IapIdentityAdapter:
                 if self._audience_configured_empty
                 else "MKT_GOV_IAP_AUDIENCE is not configured; cannot verify IAP assertion"
             )
-        # Stripped, so a header a proxy rendered blank is ABSENT rather than an assertion:
-        # a whitespace-only value is truthy, so it skipped this refusal and was refused
-        # further down by the algorithm pin instead, which reports a malformed token for
-        # what is actually a missing one.
-        assertion = ctx.header(_ASSERTION_HEADER).strip()
-        if not assertion:
-            raise IdentityError("missing IAP assertion header; request did not pass through IAP")
+        # ONE selection function, in the commons, rather than a fiftieth copy of an `or` chain.
+        # It examines both names an assertion travels under, prefers the edge-injected one, and
+        # strips, so a header a proxy rendered blank is ABSENT rather than an assertion: a
+        # whitespace-only value is truthy, and before it was stripped it skipped this refusal and
+        # was refused further down by the algorithm pin, which reports a malformed token for what
+        # is actually a missing one.
+        #
+        # The keys are lower-cased here rather than assumed. ``RequestContext`` documents them as
+        # lower-cased, but the selection is a dictionary lookup rather than ``ctx.header``, and an
+        # identity that goes missing because of header CASE is the same class of silent refusal
+        # this line exists to fix.
+        try:
+            source = select_assertion({k.lower(): v for k, v in ctx.headers.items()})
+        except AssertionRefused as exc:
+            raise IdentityError(f"missing IAP assertion header: {exc}") from exc
+        assertion = source.assertion
         # The algorithm is judged BEFORE the verifier is handed the token, with no cryptography
         # and no cloud SDK, so the refusal is exercised by the offline gate rather than living
         # inside a library the gate does not install. `alg: none` is an unsigned assertion and
