@@ -111,7 +111,11 @@ class GoldenExample:
     market: str
     vertical: str
     fields: dict[str, str]
-    granted_consents: tuple[str, ...]
+    #: The audience subject whose STORED consent records the review reads. It names a subject
+    #: described in ``golden_consent.jsonl``, so the stored state a review's consent findings
+    #: rest on is written down once, in the file whose own metrics already score it. The row
+    #: states no consent of its own: there is no field here a caller could use to assert one.
+    audience_subject_id: str
     expected_failing_rule_ids: frozenset[str]
     expected_outcome: str
 
@@ -135,7 +139,7 @@ def load_golden(path: Path) -> list[GoldenExample]:
                 market=str(obj["market"]),
                 vertical=str(obj["vertical"]),
                 fields={str(k): str(v) for k, v in (obj.get("fields") or {}).items()},
-                granted_consents=tuple(obj.get("granted_consents", []) or ()),
+                audience_subject_id=str(obj.get("audience_subject_id", "") or ""),
                 expected_failing_rule_ids=frozenset(obj.get("expected_failing_rule_ids", []) or []),
                 expected_outcome=str(obj.get("expected_outcome", "non_compliant")),
             )
@@ -316,21 +320,49 @@ def _local_settings() -> Any:
     return settings
 
 
+EVAL_TENANT = "eval-brand"
+
+
 def _make_service() -> Any:
+    """The real ReviewService, over a consent store the consent golden set describes.
+
+    The review path reads consent rather than accepting it, so the scored reviews need stored
+    records to read. They come from ``golden_consent.jsonl``, seeded under the same evaluation
+    tenant: one written-down description of who granted what, scored directly by the consent
+    metrics and relied on here. A second table of consent inside the review dataset would be
+    the typed-consent hole moved one file along.
+    """
     from marketing_compliance_gate.config import Container
     from marketing_compliance_gate.domain.services import ReviewService
 
     container = Container(_local_settings())
+    _seed_consent_store(container.consent_store, load_consent_golden(CONSENT_DATASET))
     return ReviewService(
         rule_provider=container.rule_provider,
         llm=container.llm,
         guardrail=container.guardrail,
         tracer=container.tracer,
         audit=container.audit,
+        consent_store=container.consent_store,
     )
 
 
-EVAL_TENANT = "eval-brand"
+def consent_as_of(examples: list[ConsentGoldenExample]) -> datetime:
+    """The ONE instant the consent golden set is pinned to. Refuses if the rows disagree.
+
+    A grant expires and a pending one is confirmed, so a consent verdict is only reproducible
+    against a fixed moment. The consent metrics already evaluate each row at its own ``as_of``;
+    the review path needs a single one, and taking it from the rows rather than writing it down
+    twice means the two can never age against different moments. Divergence is refused rather
+    than resolved, because picking one would silently re-date somebody's consent.
+    """
+    moments = sorted({ex.as_of for ex in examples})
+    if len(moments) != 1:
+        raise SystemExit(
+            "the consent golden set must share one as_of for the review path to age "
+            f"consent against; found {moments}"
+        )
+    return datetime.fromisoformat(moments[0])
 
 
 def _make_substantiation_service(examples: list[GreenGoldenExample]) -> Any:
@@ -374,14 +406,14 @@ def _make_substantiation_service(examples: list[GreenGoldenExample]) -> Any:
     )
 
 
-def _make_consent_service(examples: list[ConsentGoldenExample]) -> tuple[Any, Any, Any]:
-    """Wire the real ConsentService over a consent store seeded from the dataset.
+def _seed_consent_store(store: Any, examples: list[ConsentGoldenExample]) -> None:
+    """Load the described stored state into a real consent store, under the eval tenant.
 
-    The stored state is loaded through the ordinary local adapter (an in-memory SQLite
-    store), tagged with a single evaluation tenant, so the gate under test is the real one:
-    the same tenant-scoped read, the same rule provider, the same engine the API calls.
+    Shared by the consent gate and the review gate, because both must read the SAME records:
+    a review's consent findings and a consent decision disagreeing about one subject would be
+    two stores wearing one name. Everything goes in through the ordinary local adapter, so the
+    path under test is the real tenant-scoped one.
     """
-    from marketing_compliance_gate.config import Container
     from marketing_compliance_gate.domain.consent import (
         ChannelPreference,
         ConsentBasis,
@@ -394,11 +426,6 @@ def _make_consent_service(examples: list[ConsentGoldenExample]) -> tuple[Any, An
         SuppressionReason,
         SuppressionScope,
     )
-    from marketing_compliance_gate.domain.consent_service import ConsentService
-
-    settings = _local_settings()
-    container = Container(settings)
-    store = container.consent_store
 
     def _dt(value: Any) -> Any:
         text = str(value or "").strip()
@@ -478,6 +505,20 @@ def _make_consent_service(examples: list[ConsentGoldenExample]) -> tuple[Any, An
                     sent_at=moment - timedelta(hours=index + 1),
                 )
             )
+
+
+def _make_consent_service(examples: list[ConsentGoldenExample]) -> tuple[Any, Any, Any]:
+    """Wire the real ConsentService over a consent store seeded from the dataset.
+
+    The same read path, rule provider and engine the API calls, so the outcome scored is the
+    outcome the product would return for that stored state.
+    """
+    from marketing_compliance_gate.config import Container
+    from marketing_compliance_gate.domain.consent_service import ConsentService
+
+    container = Container(_local_settings())
+    store = container.consent_store
+    _seed_consent_store(store, examples)
     router = container.review_router
     return (
         ConsentService(
@@ -959,6 +1000,11 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
     prove_before_scoring(lambda: assert_metrics_not_falsely_green(thresholds))
     examples = load_golden(dataset)
     service = _make_service()
+    # The instant the reviews' consent is aged against, taken from the consent golden set the
+    # store was seeded from. Supplying the eval tenant is what makes the read possible at all:
+    # consent records are tenant-owned, so a review with no tenant reads none and every consent
+    # rule fails, which is the right refusal and the wrong measurement.
+    review_as_of = consent_as_of(load_consent_golden(CONSENT_DATASET))
     agg: dict[str, _PerMetric] = {metric: _PerMetric() for metric in SCORED}
     expected_rules = 0
     print(f"Running offline eval gate over {len(examples)} golden reviews (ReviewService).\n")
@@ -971,9 +1017,14 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
             market=Market(ex.market),
             vertical=Vertical(ex.vertical),
             fields=dict(ex.fields),
-            granted_consents=ex.granted_consents,
+            audience_subject_id=ex.audience_subject_id,
         )
-        review = service.review(ReviewRequest(asset=asset), actor="eval-bot")
+        review = service.review(
+            ReviewRequest(asset=asset),
+            actor="eval-bot",
+            tenant=EVAL_TENANT,
+            as_of=review_as_of,
+        )
         applicable = applicable_rule_ids(service, ex)
         # The denominator rule_coverage is actually measured over: the rules a reviewer says
         # apply to this asset, summed across the corpus. Eight golden reviews carry many more

@@ -175,9 +175,23 @@ deployment and nowhere else.
 
 ### Seeding the demo consent
 
-The marketing journey reads consent from this service over HTTP. On a deployment that leg is
-empty until something writes a record, and a subject with no record on file is a subject nobody
-may be sent anything: the correct answer to an empty store, and the wrong demo.
+The marketing journey reads consent from this service over HTTP, and **so does every asset
+review**: since 2026-09-12 a review carries an `audience_subject_id` and no consent of its own,
+resolves that subject's stored records under the verified tenant, and lets the market's
+`CONSENT_REQUIRED` rules decide from those. So on a deployment with nothing written yet, every
+review whose market requires consent is non-compliant and escalated. That is the correct answer
+to an empty store, and the wrong demo. Two knock-on consequences worth knowing before you demo:
+
+- **The tenant must resolve, or every review fails its consent rules.** Consent records are
+  tenant-owned, so a caller whose tenancy resolves to nothing reads nothing. Set
+  `MKT_GOV_IAP_TENANT_DOMAINS_JSON` for the humans and `MKT_GOV_IAP_MACHINE_TENANTS_JSON` for the
+  programmatic callers, both pointing at the tenant the seed was loaded under. A machine caller
+  is keyed on its EXACT service-account address, never its domain, because every account in a
+  project shares one.
+- **Read the reason, not just the outcome.** A failing consent finding has four causes and the
+  review names which: a record that grants nothing, a subject the store has never heard of, no
+  subject named on the asset, or no verified tenant. The console, the CLI and the demo console all
+  print it. "No record on file" and "nobody asked" are different operational problems.
 
 ```bash
 # apply infra/terraform first: the loader writes documents, it does not create databases

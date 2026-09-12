@@ -39,6 +39,11 @@ from marketing_compliance_gate.domain.services import ReviewService
 
 ACTOR = "compliance-officer@marketing.test"
 
+#: The tenant the local consent seed files under, and a subject holding an evidenced opt-in for
+#: ``marketing``, so the compliant case below clears its consent rules from a STORED record.
+TENANT = "demo-brand"
+SUBJECT_GRANTED = "subj-000101"
+
 
 def _service(container: Container, router: LocalReviewRouter | None) -> ReviewService:
     return ReviewService(
@@ -47,6 +52,7 @@ def _service(container: Container, router: LocalReviewRouter | None) -> ReviewSe
         guardrail=container.guardrail,
         tracer=container.tracer,
         audit=container.audit,
+        consent_store=container.consent_store,
         review_router=router,
     )
 
@@ -96,9 +102,9 @@ def test_compliant_release_recommendation_is_routed(local_container: Container):
         market=Market.SG,
         vertical=Vertical.ONLINE_RETAIL,
         fields={"discount_pct": "40", "stock_on_hand": "120"},
-        granted_consents=("marketing",),
+        audience_subject_id=SUBJECT_GRANTED,
     )
-    review = service.review(ReviewRequest(asset=asset), actor=ACTOR)
+    review = service.review(ReviewRequest(asset=asset), actor=ACTOR, tenant=TENANT)
     assert review.outcome is ReviewOutcome.COMPLIANT
     assert review.requires_human_review
     assert len(router.outbox.pending()) == 1

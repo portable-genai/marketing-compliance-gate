@@ -71,7 +71,8 @@ residency check on the market.
 
 `RuleEngine` is the heart: pure (stdlib only), replayable (same asset + rule set produce the
 same findings) and unit-tested. The LLM never decides any of this. Each `CheckType` maps to
-one transparent predicate over the asset's title + body / fields / granted consents:
+one transparent predicate over the asset's title + body / fields, or, for the consent rules,
+over the purposes a data subject's STORED consent records grant:
 
 | CheckType | Predicate |
 |---|---|
@@ -79,7 +80,7 @@ one transparent predicate over the asset's title + body / fields / granted conse
 | `REQUIRED_DISCLOSURE` | title + body MUST contain every pattern |
 | `REQUIRED_FIELD` | a metadata field MUST be set (non-blank) |
 | `NUMERIC_MAX` | a numeric field MUST be <= a limit (absent/unparseable fails closed) |
-| `CONSENT_REQUIRED` | a consent purpose MUST be in the asset's granted consents |
+| `CONSENT_REQUIRED` | a consent purpose MUST be granted by the audience subject's stored consent records, read through `ConsentStorePort` under the verified tenant. The request carries a subject id and no consent: a subject with no record on file grants nothing |
 
 `RuleKind` is `claim`, `permission`, `brand`, `consent` or `green_claim`. Green-claim rules
 carry `applies_to_categories`: they are selected only when the asset actually makes a claim in

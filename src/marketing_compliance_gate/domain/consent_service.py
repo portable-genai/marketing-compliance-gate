@@ -40,7 +40,6 @@ No model participates in any of this. Pure domain code: no Google Cloud, ADK or 
 from __future__ import annotations
 
 import contextlib
-import hashlib
 from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import timedelta
@@ -60,6 +59,7 @@ from .consent import (
     SendEvent,
     SuppressionEntry,
     SuppressionScope,
+    subject_ref,
 )
 from .errors import ConsentRecordNotFoundError, ConsentWriteRejectedError, TenantAccessDeniedError
 from .identity import Principal
@@ -500,11 +500,9 @@ class ConsentService:
             AuditEvent(action=action, actor=actor, decision=Decision.ALLOWED, metadata=metadata)
         )
 
-    @staticmethod
-    def _subject_ref(tenant: str, subject_id: str) -> str:
-        """Return a tenant-scoped pseudonym; raw subject ids never enter audit sinks."""
-        digest = hashlib.sha256(f"{tenant}\0{subject_id}".encode()).hexdigest()
-        return f"subject-sha256:{digest}"
+    #: The tenant-scoped pseudonym; raw subject ids never enter audit sinks. The shape lives in
+    #: :mod:`~marketing_compliance_gate.domain.consent` because the asset review derives it too.
+    _subject_ref = staticmethod(subject_ref)
 
     def _audit_denial(self, record_id: str, principal: Principal, owner: str) -> None:
         self._audit.record(

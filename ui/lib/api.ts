@@ -74,7 +74,12 @@ export interface AssetBody {
   market: Market;
   vertical: Vertical;
   fields?: Record<string, string>;
-  granted_consents?: string[];
+  // Which data subject's STORED consent applies, never what that consent is. A
+  // `granted_consents` array used to sit here and the console had a box to type it into, so a
+  // reviewer could tell the gate any permission they liked and the seeded consent store was
+  // never read. The backend now reads this subject's records under the verified tenant; a
+  // subject with no record on file grants nothing and fails the market's consent rules.
+  audience_subject_id?: string;
 }
 
 // No ``actor``: the audit actor is the server-verified Principal. The request body cannot

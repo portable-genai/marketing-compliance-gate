@@ -23,6 +23,13 @@ Design notes
   value: exposing ``assess`` here would mean an agent could name any tenant it liked. The gate
   is reached through ``POST /v1/substantiation``, where the IdentityPort resolves the principal
   from the transport before any evidence is read.
+* For the same reason the review tool takes NO consent argument and no audience subject. It
+  used to take ``granted_consents``, which is precisely a client-asserted consent; consent is
+  now read from the store under the verified principal's tenant, and a tool call carries no
+  verified principal. So a review produced here resolves no consent records and the market's
+  ``CONSENT_REQUIRED`` rules fail, which is the honest answer: the agent can show an asset's
+  claim and disclosure defects, and only the authenticated route can clear its consent. This is
+  the posture ``mcp/server.py`` has always had for the same reason.
 * ``google.adk`` is imported lazily inside :func:`build_function_tools` so this module imports
   cleanly under the on-prem / local / test profile with no ADK installed (SPEC §4). The plain
   Python tool callable is importable and unit-testable without ADK at all.
@@ -52,7 +59,6 @@ def review_marketing_asset(
     vertical: str = "banking",
     asset_id: str = "asset-1",
     fields: dict[str, str] | None = None,
-    granted_consents: list[str] | None = None,
     actor: str = _DEFAULT_ACTOR,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
@@ -63,6 +69,12 @@ def review_marketing_asset(
     a PENDING approval record. Every release or block disposition is flagged for human review
     (maker-checker) and must be dispositioned by a human checker; this tool never approves.
 
+    A tool call carries no verified principal, so no tenant's consent records can be read for
+    it and the market's consent rules will FAIL. Use this for the claim, disclosure and brand
+    findings; clear an asset's consent through the authenticated ``POST /v1/review``, which
+    reads the audience subject's stored records. There is deliberately no argument by which a
+    caller can state a consent.
+
     Args:
       body: The marketing copy to check.
       asset_type: "campaign", "creative" or "offer".
@@ -71,7 +83,6 @@ def review_marketing_asset(
       vertical: "banking" or "online_retail".
       asset_id: Asset id.
       fields: Structured metadata the numeric / permission checks evaluate (e.g. {"apr": "4.50"}).
-      granted_consents: Consent purposes the audience has granted.
       actor: Authenticated identity the request is made for.
 
     Returns:
@@ -90,7 +101,6 @@ def review_marketing_asset(
         market=Market(market),
         vertical=Vertical(vertical),
         fields=dict(fields or {}),
-        granted_consents=tuple(granted_consents or ()),
     )
     request = ReviewRequest(asset=asset, actor=actor)
     return to_jsonable(make_review_service(c).review(request, actor=actor))

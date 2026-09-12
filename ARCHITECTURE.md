@@ -127,9 +127,26 @@ than one that cites the same instrument the asset review cites.
 So the consent module feeds the existing engine rather than replacing it.
 `ConsentEngine.granted_purposes` resolves, from the subject's stored records at an explicit
 `as_of`, which purposes are actually granted, and hands that set to
-`RuleEngine.consent_checks_for`. That method is the shared core; `consent_checks(asset, ...)`
-is now a thin wrapper over it that passes the asset's declared consents. One engine, one set
-of citations, two callers asking different questions about the same idea.
+`RuleEngine.consent_checks_for`. That method is the only way consent reaches the engine, and
+**both callers reach it through the store**: the consent route asks about a subject a question
+names, and the asset review asks about the subject its `audience_subject_id` names. One engine,
+one store, one set of citations, two questions.
+
+The asset review did not always work that way, and the gap was the whole point of the rule
+engine being deterministic. `MarketingAsset` carried a `granted_consents` tuple the caller
+filled in, and the console had a box to type it into, so the gate applied whatever a reviewer
+asserted and the store beside it was never read on that path. `ReviewService` now resolves the
+purposes on file for the VERIFIED tenant before the engine runs, records which records it read
+in `Review.consent_source`, and audits the subject as a tenant-scoped pseudonym. Four states,
+three of which grant nothing: a grant on file, a record that grants nothing, a subject the store
+has no record for, and no subject named at all. The last two are distinguished on purpose,
+because "checked and absent" and "never checked" are different facts about a compliance verdict,
+and neither is consent.
+
+`as_of` is a domain-level argument on `ReviewService.review` and is deliberately absent from
+`POST /v1/review`. The demo and the evaluation gate pin it so a verdict reproduces next year; a
+caller able to choose it could age a review back to when an expired grant was still live, which
+is the typed-consent hole in another spelling. Over HTTP a review is always decided at now.
 
 The decision itself has no model in it at all. It is assembled from ONE snapshot of the
 subject's state (records, preferences, suppressions, caps read together, because a decision

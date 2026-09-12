@@ -184,6 +184,14 @@ the rule engine and the rule citations.
 - **It reuses the rule engine.** The engine resolves which purposes the subject's stored
   records grant at `as_of` and hands that set to `RuleEngine.consent_checks_for`, the same
   code path the asset review uses, so a denial carries the market rule's own citation.
+- **The asset review reads it too, and cannot be told otherwise.** A review carries an
+  `audience_subject_id` and no consent at all: it resolves that subject's stored records under
+  the verified tenant, and the market's `CONSENT_REQUIRED` rules decide from those. A subject
+  with no record on file grants nothing, because silence is a refusal and not implied consent,
+  and the review says which happened (`Review.consent_source`) rather than reporting one shape
+  for four different states. The asset used to carry a free-text consent list and the console
+  had a box to type it into, so the gate could be told any permission; that field is gone, and
+  a request still sending it is refused with the field named rather than quietly ignored.
 - **Recording a grant is the gated write.** A withdrawal, an opt-out or a suppression applies
   immediately: those only ever narrow what may be done to a person. A grant captured with
   proof (an explicit or soft opt-in, a named source, a locator for the captured statement) is

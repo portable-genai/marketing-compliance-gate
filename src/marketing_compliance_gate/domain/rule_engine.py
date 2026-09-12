@@ -9,9 +9,12 @@ auditor must be able to re-run, so it is code, not an LLM call. The LLM only nar
 resulting findings afterwards; it never decides whether a check passes.
 
 Determinism: same (asset, rule set) -> same findings, byte for byte. Each
-:class:`CheckType` maps to one pure predicate over the asset's ``body`` / ``fields`` /
-``granted_consents``; severity comes from the rule data; findings are ordered by
-(failed-first, severity desc, rule id) so the output never drifts between runs.
+:class:`CheckType` maps to one pure predicate over the asset's ``body`` / ``fields``;
+severity comes from the rule data; findings are ordered by (failed-first, severity desc,
+rule id) so the output never drifts between runs. The consent rules are the one set the
+asset cannot answer: :meth:`RuleEngine.consent_checks_for` takes the purposes a data
+subject's STORED records grant, because the thing under review can never be the evidence
+that it may be sent.
 
 Generic + APAC: the engine has NO market- or vertical-specific branch. All locale,
 market and vertical specificity lives in the seeded :class:`RuleSet` (config + seed), so
@@ -68,9 +71,9 @@ class RuleEngine:
     def check(self, asset: MarketingAsset, rule_set: RuleSet) -> tuple[ClaimFinding, ...]:
         """Evaluate every non-consent rule and return ordered findings.
 
-        Consent rules are evaluated separately by :meth:`consent_checks` (they yield
-        :class:`ConsentCheck` results as well as findings), so this method covers the
-        CLAIM / PERMISSION / BRAND rules. The result is deterministically ordered.
+        Consent rules are evaluated separately by :meth:`consent_checks_for` (they yield
+        :class:`ConsentCheck` results as well as findings, from the subject's stored records),
+        so this method covers the CLAIM / PERMISSION / BRAND rules. Deterministically ordered.
         """
         findings = [
             self._evaluate(asset, rule)
@@ -79,23 +82,6 @@ class RuleEngine:
         ]
         findings.sort(key=self._sort_key)
         return tuple(findings)
-
-    def consent_checks(
-        self, asset: MarketingAsset, rule_set: RuleSet
-    ) -> tuple[tuple[ConsentCheck, ...], tuple[ClaimFinding, ...]]:
-        """Evaluate consent rules for an ASSET, returning both the checks and their findings.
-
-        The consent decision is pure code: a purpose is granted iff it appears in the
-        asset's ``granted_consents``. Each required-but-not-granted purpose yields a
-        failing :class:`ClaimFinding` so consent gaps show up in the same audit trail.
-
-        Thin wrapper over :meth:`consent_checks_for`, which is the same evaluation driven by
-        a granted-purpose set from anywhere: the asset path passes the asset's declared
-        consents, and the consent and preference store passes the purposes a data subject's
-        stored records actually grant at a given instant. One rule engine, one set of rule
-        citations, two callers.
-        """
-        return self.consent_checks_for(asset.granted_consents, rule_set, asset=asset)
 
     def consent_checks_for(
         self,
@@ -109,6 +95,13 @@ class RuleEngine:
         Pure and total: a purpose is granted iff it is in ``granted_purposes`` (case-folded).
         Anything not in that set is NOT granted, so an unknown consent state fails closed
         here exactly as it does in the consent store's own engine.
+
+        ``granted_purposes`` always comes from STORED consent records, never from the thing
+        under review. Both callers read the same store through the same
+        :class:`~marketing_compliance_gate.ports.consent.ConsentStorePort`: the asset review
+        resolves the purposes the asset's ``audience_subject_id`` has on file, and the consent
+        and preference store resolves them for the subject a question names. There is no longer
+        any path by which a caller's own claim about consent reaches this method.
 
         ``asset`` is optional because the two callers ask different questions. The
         asset-review path supplies one, so a CONSENT-kind rule carrying a copy- or
@@ -217,14 +210,16 @@ class RuleEngine:
             )
 
         if rule.check is CheckType.CONSENT_REQUIRED:
-            granted = {c.casefold() for c in asset.granted_consents}
-            ok = rule.consent_purpose.casefold() in granted
-            if ok:
-                return True, "", f"Consent '{rule.consent_purpose}' granted."
+            # Unreachable for a CONSENT-kind rule: :meth:`consent_checks_for` answers those
+            # from the subject's STORED records and never routes them here. A rule of another
+            # kind carrying this check has no answer available at this layer, because consent
+            # is a fact about a person's record rather than anything the copy can show, so it
+            # fails closed and says why rather than inventing a verdict from the asset.
             return (
                 False,
-                f"missing consent: {rule.consent_purpose}",
-                rule.description,
+                f"consent '{rule.consent_purpose}' cannot be decided from the asset",
+                "a CONSENT_REQUIRED check belongs to a consent-kind rule, which is decided "
+                "from the subject's stored consent records",
             )
 
         # Unknown check type: fail closed so an unmodelled rule never silently passes.

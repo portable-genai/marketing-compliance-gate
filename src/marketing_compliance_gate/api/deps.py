@@ -21,6 +21,13 @@ def get_container() -> Container:
 
 
 def make_review_service(container: Container | None = None) -> ReviewService:
+    """Wire the review pipeline, INCLUDING the consent and preference store.
+
+    The store is on this list because a review's consent findings are read from it: the asset
+    carries a subject id and nothing else, so without the store bound there is no consent to
+    apply. It is the same store ``make_consent_service`` binds, so the answer a review acts on
+    and the answer ``/v1/consent/decision`` returns come from one set of records.
+    """
     container = container or get_container()
     return ReviewService(
         rule_provider=container.rule_provider,
@@ -28,6 +35,7 @@ def make_review_service(container: Container | None = None) -> ReviewService:
         guardrail=container.guardrail,
         tracer=container.tracer,
         audit=container.audit,
+        consent_store=container.consent_store,
         review_router=container.review_router,
     )
 

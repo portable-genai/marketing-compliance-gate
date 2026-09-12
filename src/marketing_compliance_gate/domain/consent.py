@@ -423,6 +423,17 @@ class ConsentDecision:
         return tuple(r for r in self.reasons if r in DENYING_REASONS)
 
 
+def subject_ref(tenant: str, subject_id: str) -> str:
+    """The tenant-scoped pseudonym for a data subject. Raw subject ids never enter a sink.
+
+    One home for the shape, because two callers derive it: the consent store's own service
+    audits every read and write, and the asset review audits the subject whose records decided
+    its consent findings. A second spelling would be a second chance to leak.
+    """
+    digest = hashlib.sha256(f"{tenant}\0{subject_id}".encode()).hexdigest()
+    return f"subject-sha256:{digest}"
+
+
 def decision_id(
     query: ConsentQuery,
     as_of: datetime,

@@ -200,6 +200,7 @@ def test_the_served_demo_walks_every_review_in_a_real_browser(
         assert _attrs(page, "[data-consent-granted]", "data-consent-granted") == [
             str(bool(c["granted"])).lower() for c in consent_checks
         ]
+        _assert_consent_was_read_not_asserted(page, live)
         assert page.locator("[data-citation-scope='review']").get_attribute(
             "data-citation-count"
         ) == str(len(live["citations"]))
@@ -236,6 +237,44 @@ def test_the_sources_page_serves_every_routed_record_in_the_browser(
     content = page.content()
     for source_id in cited:
         assert source_id in content
+
+
+def _assert_consent_was_read_not_asserted(page: Any, live: dict[str, Any]) -> None:
+    """The served page states WHOSE stored records decided its consent checks.
+
+    A granted consent check and an asserted one render identically, which is exactly how the
+    typed-consent hole survived: the request carried the purposes, the page showed "granted",
+    and nothing on screen could tell the two apart. So the figures are read out of the live DOM
+    and held against the running :class:`DemoSession`'s own ``consent_source`` rather than any
+    prose, and a page that rendered a granted check while claiming no records were read fails.
+    """
+    source = live["consent_source"]
+    panel = page.locator("[data-consent-source-read]")
+    assert panel.count() == 1, "the served consent panel names no source for its consent"
+    read = not source["reason"] and bool(source["subject_id"])
+    assert panel.get_attribute("data-consent-source-read") == str(read).lower()
+    assert panel.get_attribute("data-consent-source-subject") == source["subject_id"]
+    assert panel.get_attribute("data-consent-source-records") == str(source["records_read"])
+    assert panel.get_attribute("data-consent-source-purposes") == ",".join(
+        source["granted_purposes"]
+    )
+    assert panel.get_attribute("data-consent-source-reason") == source["reason"]
+
+    # The decisive assertion, and the one the old shape could never satisfy: every consent check
+    # the page shows as GRANTED names a purpose the STORE returned. A console that invented one,
+    # or a request that asserted one, leaves a granted check whose purpose is in no record.
+    granted_purposes = {p.casefold() for p in source["granted_purposes"]}
+    for check in live["consent_checks"]:
+        if check["granted"]:
+            assert check["purpose"].casefold() in granted_purposes, (
+                f"the page shows consent {check['purpose']!r} as granted, and the consent store "
+                f"returned {sorted(granted_purposes)}: a granted check nobody's record supports"
+            )
+    if not read:
+        assert not any(c["granted"] for c in live["consent_checks"]), (
+            "no consent records were read, so nothing may render as granted: "
+            "an absent record is a refusal, never implied consent"
+        )
 
 
 def _attrs(page: Any, selector: str, attribute: str) -> list[str]:

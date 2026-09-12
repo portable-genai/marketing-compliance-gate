@@ -24,6 +24,13 @@ MCP stdio verifies no end user, so the caller is recorded as a SERVICE caller an
 asserted. That is also why nothing here reads tenant-scoped evidence: the green-claims gate is
 excluded for the same reason ``agent/tools.py`` excludes it, because a tool argument is a
 client-asserted value and substantiation is authorized against a verified principal's tenant.
+
+**Consent follows from the same fact, and the review tool takes no argument for it.** A review's
+``CONSENT_REQUIRED`` rules are decided from the audience subject's stored records under the
+verified tenant, and there is no verified tenant here, so no records are read and those rules
+FAIL. That is the honest answer rather than a gap: the tool shows an asset's claim, disclosure
+and brand defects, and only the authenticated ``POST /v1/review`` can clear its consent. Adding
+a consent argument would be the typed-consent hole this surface never had.
 """
 
 from __future__ import annotations

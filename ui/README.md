@@ -2,11 +2,17 @@
 
 A thin demo console for `marketing-compliance-gate`, the Marketing Compliance and Brand Governance system. It is
 a thin presentation layer over the `marketing-compliance-gate` FastAPI backend: it submits a marketing asset (copy +
-market + vertical + fields + granted consents) for review, and renders the audit-first
+market + vertical + fields + the audience's subject id) for review, and renders the audit-first
 result (the compliant / non-compliant outcome, the deterministic findings with severity,
-evidence, remediation and provenance, the consent checks, and the cited rules) with the
-maker-checker "human review required" banner. It never bypasses the guardrail or the review
-gate: it only shows what the backend returns.
+evidence, remediation and provenance, the consent checks and whose stored records decided them,
+and the cited rules) with the maker-checker "human review required" banner. It never bypasses
+the guardrail or the review gate: it only shows what the backend returns.
+
+**The console cannot state a consent.** It once could: a "Granted consents" box went out as the
+asset's `granted_consents`, so the gate applied whatever a reviewer typed. The form names an
+audience subject instead, the backend reads that subject's records under the verified tenant,
+and the console prints which records it read. `tests/consent-is-read-not-typed.test.mjs` keeps
+the field out and covers the four read states.
 
 Built with **Next.js (App Router) + TypeScript + Tailwind**. Dependencies are kept minimal:
 `next`, `react`, `react-dom`, `tailwindcss`, `postcss`, `autoprefixer`, `typescript`, and the

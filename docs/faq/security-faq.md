@@ -77,12 +77,21 @@ this repo does not replace it. Proven by `tests/unit/test_audit_chain.py`.
 
 ### Is customer PII processed?
 
-No. `marketing-compliance-gate` reviews marketer-authored asset copy (campaign / creative / offer text plus
-structured fields) and reference rule text; it does not ingest, index or store customer PII
-or per-customer consent records (`MarketingAsset.granted_consents` is a tuple of
-consent-purpose labels, not customer data). There is therefore no PII de-identification
-boundary in this repo (C3 / C4 N-A). Latent note: if your fork ever submits PII-bearing
-copy, add a redaction step, because `AuditEvent` stores the raw prompt / response today.
+Yes, in one place, deliberately: the consent and preference store holds per-subject consent
+records, preferences, caps and suppressions, because this repo is the catalog's consent
+authority. Asset copy is not a PII channel: it is marketer-authored campaign / creative / offer
+text plus structured fields and reference rule text. If your fork submits PII-bearing copy, add
+a redaction step, because `AuditEvent` stores the raw prompt and response today.
+
+The consent boundary is enforced rather than declared. A review carries an
+`audience_subject_id` and **no consent**: it reads that subject's stored records under the
+VERIFIED tenant and the market's consent rules decide from those, so a caller cannot state a
+permission (it could until 2026-09-12, when the asset carried a free-text consent list). The
+store filters on the verified tenant and a cross-tenant record read is a 403 (C2); subject ids
+are replaced with tenant-scoped SHA-256 references before any durable sink, on the consent
+store's audit events and on every review's (C3); and a jurisdiction-pack PII gate with an
+independent planted-identifier oracle drives every consent-derived surface across SG, JP and AU
+(C4). See `docs/practices-audit.md`.
 
 ### Supply chain: are dependencies pinned and scanned?
 

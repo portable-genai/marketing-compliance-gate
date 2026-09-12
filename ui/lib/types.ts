@@ -45,6 +45,16 @@ export interface ApprovalRecord {
   decided_at?: string | null;
 }
 
+// Where the consent a review applied came from. The console renders it rather than leaving it
+// implied: a granted check and an asserted one look identical on screen, and until 2026-09-12
+// this console asserted them. `reason` is empty exactly when records were read.
+export interface ConsentSource {
+  subject_id: string;
+  records_read: number;
+  granted_purposes: string[];
+  reason: string;
+}
+
 export interface Review {
   id: string;
   asset_id: string;
@@ -54,6 +64,7 @@ export interface Review {
   outcome: "compliant" | "non_compliant";
   findings: ClaimFinding[];
   consent_checks: ConsentCheck[];
+  consent_source: ConsentSource;
   summary: string;
   citations: Citation[];
   approval: ApprovalRecord | null;

@@ -60,6 +60,10 @@ _NON_COMPLIANT = MarketingAsset(
     body="Get guaranteed returns of 4.10% with zero risk-free worry!",
     market=Market.SG,
     vertical=Vertical.BANKING,
+    # A seeded audience subject, so the review's consent read is a real one. It is irrelevant to
+    # what this file proves (the RULES fired), and it is here so the review exercises the whole
+    # pipeline rather than the no-subject short circuit.
+    audience_subject_id="subj-000101",
 )
 
 #: The rules that copy must fail on. Named, so a review that fails on SOMETHING is not enough.
@@ -85,7 +89,12 @@ def _local_side_ports(settings: Settings) -> Container:
     local = dataclasses.replace(
         settings,
         profile="local",
-        local=LocalSettings(db_path=":memory:", audit_path=":memory:", evidence_path=":memory:"),
+        local=LocalSettings(
+            db_path=":memory:",
+            audit_path=":memory:",
+            evidence_path=":memory:",
+            consent_path=":memory:",
+        ),
     )
     return Container(local)
 
@@ -97,6 +106,7 @@ def _review_service(rule_provider, side: Container) -> ReviewService:  # noqa: A
         guardrail=side.guardrail,
         tracer=side.tracer,
         audit=side.audit,
+        consent_store=side.consent_store,
     )
 
 
@@ -161,7 +171,9 @@ def test_a_review_under_gcp_fails_on_named_rules_from_the_pack(
     side = _local_side_ports(settings)
     service = _review_service(_gcp_rule_provider(settings), side)
 
-    review = service.review(ReviewRequest(asset=_NON_COMPLIANT), actor="gcp-rule-probe")
+    review = service.review(
+        ReviewRequest(asset=_NON_COMPLIANT), actor="gcp-rule-probe", tenant="demo-brand"
+    )
 
     assert review.outcome is ReviewOutcome.NON_COMPLIANT
     failing = {f.rule_id for f in review.failing_findings}
@@ -194,4 +206,6 @@ def test_the_defect_this_guards_against_is_a_refused_review_not_a_passing_one(
     side = _local_side_ports(_gcp_settings(monkeypatch))
     service = _review_service(_UnprovisionedStore(), side)
     with pytest.raises(RuleSetEmptyError):
-        service.review(ReviewRequest(asset=_NON_COMPLIANT), actor="gcp-rule-probe")
+        service.review(
+            ReviewRequest(asset=_NON_COMPLIANT), actor="gcp-rule-probe", tenant="demo-brand"
+        )

@@ -23,6 +23,15 @@ from marketing_compliance_gate.domain.models import (
 )
 from marketing_compliance_gate.domain.services import ReviewService
 
+#: The tenant the local consent seed files its subjects under, and the one every review below
+#: is run as. A review with no tenant reads no records at all, which is a DIFFERENT state from
+#: a subject who granted nothing (see test_review_reads_consent_from_the_store.py).
+TENANT = "demo-brand"
+
+#: A seeded subject holding an evidenced explicit opt-in for ``marketing``
+#: (adapters/local/_consent_seed.py), so a review for this audience clears its consent rules.
+SUBJECT_GRANTED = "subj-000101"
+
 
 def _service(container: Container) -> ReviewService:
     return ReviewService(
@@ -31,6 +40,7 @@ def _service(container: Container) -> ReviewService:
         guardrail=container.guardrail,
         tracer=container.tracer,
         audit=container.audit,
+        consent_store=container.consent_store,
     )
 
 
@@ -43,7 +53,7 @@ def _asset(**kw) -> MarketingAsset:
         market=Market.SG,
         vertical=Vertical.BANKING,
         fields={},
-        granted_consents=(),
+        audience_subject_id="",
     )
     base.update(kw)
     return MarketingAsset(**base)  # type: ignore[arg-type]
@@ -94,9 +104,9 @@ def test_clean_release_recommendation_requires_human_review(local_container: Con
         market=Market.SG,
         vertical=Vertical.ONLINE_RETAIL,
         fields={"discount_pct": "40", "stock_on_hand": "120"},
-        granted_consents=("marketing",),
+        audience_subject_id=SUBJECT_GRANTED,
     )
-    review = svc.review(ReviewRequest(asset=asset), actor="tester")
+    review = svc.review(ReviewRequest(asset=asset), actor="tester", tenant=TENANT)
     assert review.outcome is ReviewOutcome.COMPLIANT
     assert review.requires_human_review
     assert not review.failing_findings
@@ -140,6 +150,7 @@ def test_any_failing_finding_requires_human_review(local_container: Container):
         guardrail=local_container.guardrail,
         tracer=local_container.tracer,
         audit=local_container.audit,
+        consent_store=local_container.consent_store,
     )
     review = svc.review(ReviewRequest(asset=_asset(body="please frobnicate now")), actor="t")
     assert review.outcome is ReviewOutcome.NON_COMPLIANT
@@ -171,6 +182,7 @@ def test_empty_rule_set_is_a_hard_error(local_container: Container):
         guardrail=local_container.guardrail,
         tracer=local_container.tracer,
         audit=local_container.audit,
+        consent_store=local_container.consent_store,
     )
     with pytest.raises(RuleSetEmptyError):
         svc.review(ReviewRequest(asset=_asset()), actor="tester")
