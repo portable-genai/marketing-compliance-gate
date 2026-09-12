@@ -1,7 +1,8 @@
 """On-prem placeholder for ``RuleProviderPort`` — the sovereign migration target.
 
-A reversibility (no-lock-in) placeholder: in the managed profile this port binds to the
-Gemini File Search rule-KB adapter; switching ``profile`` to ``onprem`` rebinds it here.
+A reversibility (no-lock-in) placeholder: in the managed and local profiles this port binds
+to the versioned rule pack bundled in the package; switching ``profile`` to ``onprem`` rebinds
+it here.
 The adapter constructs cleanly with **no external dependencies** and structurally
 satisfies the same Protocol, so the contract tests prove interface parity. Porting D6
 on-premise is only a matter of filling these bodies in against your on-prem rule store;

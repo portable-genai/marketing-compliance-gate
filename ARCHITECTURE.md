@@ -35,8 +35,8 @@ portable across vendors, and honest about its boundaries.
 
 | Profile | Role | Backing |
 |---|---|---|
-| `gcp` | primary, managed | Gemini API File Search (rule KB), Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval. SDK imports are lazy. |
-| `local` | dev / test / CI default | a WORKING offline stack: a deterministic SQLite FTS5 rule KB seeded per (market, vertical), a deterministic schema-driven LLM narrator, a heuristic guardrail, append-only audit, no-op tracer, in-process registry / tool-catalog, the offline eval gate. SDK-free and seedable. |
+| `gcp` | primary, managed | the versioned rule pack bundled in the package (no managed rule store to provision), Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval. SDK imports are lazy. |
+| `local` | dev / test / CI default | a WORKING offline stack: the same bundled rule pack indexed in a deterministic SQLite FTS5 store per (market, vertical), a deterministic schema-driven LLM narrator, a heuristic guardrail, append-only audit, no-op tracer, in-process registry / tool-catalog, the offline eval gate. SDK-free and seedable. |
 | `platform` | shared-platform reuse | thin HTTP clients to the shared `agent-guardrail-gateway`, `enterprise-knowledge-base`, `agent-registry`, `model-quality-gate` eval (a real client: `POST /v1/evaluations` + `/v1/gate`, `mkt6-compliance` bundle), `agent-observability`. |
 | `onprem` | portability proof | fail-fast `NotImplementedError` stubs satisfying the same Protocols. |
 
@@ -98,7 +98,7 @@ change, not a rule-engine change.
 
 ## Tenant isolation on substantiation evidence
 
-The rule KB is shared reference data, but substantiation evidence is not: it is a brand's own
+The rule pack is shared reference data, but substantiation evidence is not: it is a brand's own
 emissions inventories, offset retirement records, test reports and fund disclosures. That makes
 object-level authorization real here, and it is fail-closed and server-verified:
 

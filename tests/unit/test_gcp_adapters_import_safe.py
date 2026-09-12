@@ -24,8 +24,12 @@ CONFIG_PATH = "config/settings.yaml"
 
 # port name -> (dotted adapter, Protocol). The full GCP adapter family.
 GCP_ADAPTERS: dict[str, tuple[str, type]] = {
+    # The managed rule source is the bundled pack, not a cloud service: it lives outside the
+    # gcp package, imports no SDK, and is held to the same construct-and-satisfy contract here
+    # because it is what the gcp profile binds. test_gcp_rule_source_is_the_bundled_pack.py
+    # proves it serves rules rather than merely constructing.
     "rule_provider": (
-        "marketing_compliance_gate.adapters.gcp.file_search_rules:FileSearchRuleProviderAdapter",
+        "marketing_compliance_gate.adapters.bundled.rules:BundledRulePackAdapter",
         ports.RuleProviderPort,
     ),
     "llm": (

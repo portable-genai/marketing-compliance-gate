@@ -161,7 +161,7 @@ class Citation:
 
 
 # --------------------------------------------------------------------------- #
-# The rule set (per market + per vertical) — the File Search KB, config + seed
+# The rule set (per market + per vertical) — the bundled rule pack, config + seed
 # --------------------------------------------------------------------------- #
 class RuleKind(StrEnum):
     """What aspect of a marketing asset a rule governs (generic across verticals)."""
@@ -227,7 +227,7 @@ class Rule:
     """One deterministic compliance rule, scoped to a market and vertical.
 
     Rules are data: the engine's behaviour is fixed code, while ``patterns`` /
-    ``field`` / ``limit`` / ``consent_purpose`` come from the seeded rule KB
+    ``field`` / ``limit`` / ``consent_purpose`` come from the bundled rule pack
     (config + seed). ``citation`` points at the underlying authority.
     """
 
@@ -256,13 +256,17 @@ class RuleSet:
     """The set of rules in force for a (market, vertical).
 
     This is the per-market + per-vertical advertising + consumer-protection + consent
-    rule KB (File Search store on GCP; SQLite FTS5 locally). Generic and APAC: the
-    banking financial-promotion rules are one set among others.
+    rule set, served from the versioned rule pack bundled in the repository (in-memory on
+    the managed profile, SQLite FTS5 locally). Generic and APAC: the banking
+    financial-promotion rules are one set among others. ``version`` names the revision of
+    the pack the rules came from; a review records it so a finding is traceable to the rules
+    that produced it. Empty means the provider could not say which revision it served.
     """
 
     market: Market
     vertical: Vertical
     rules: tuple[Rule, ...] = ()
+    version: str = ""
 
     def by_kind(self, kind: RuleKind) -> tuple[Rule, ...]:
         return tuple(r for r in self.rules if r.kind is kind)

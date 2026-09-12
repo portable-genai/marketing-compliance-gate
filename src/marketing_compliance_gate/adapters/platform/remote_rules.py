@@ -1,13 +1,16 @@
-"""Remote-platform rule-provider adapter (RuleProviderPort) — thin HTTP client to A2.
+"""Remote-platform rule-provider adapter (RuleProviderPort) — thin HTTP client to the shared KB.
 
-When D6 reuses the shared platform, the compliance rule KB is served by the **A2
-Enterprise Knowledge Base**. This adapter implements the port by calling A2's rule
-endpoints (base URL from ``KNOWLEDGE_BASE_URL``). Constructs cleanly with no Google Cloud SDK;
+When D6 reuses the shared platform, the compliance rule set is served by the
+**enterprise-knowledge-base**. This adapter implements the port by calling its rule endpoints
+(base URL from the variable ``settings.knowledge_base.base_url_env`` names, ``KNOWLEDGE_BASE_URL``
+by default). It is the only profile whose rules arrive over the network: ``gcp`` and ``local``
+serve the versioned pack bundled in the package. Constructs cleanly with no Google Cloud SDK;
 the HTTP body is wired in the platform phase.
 """
 
 from __future__ import annotations
 
+from ...config import Settings
 from ...domain.errors import ComplianceGovError
 from ...domain.models import Market, RuleSet, Vertical
 from ...envread import setting_or_default
@@ -17,15 +20,16 @@ _PHASE = "RemoteRuleProviderAdapter is wired in the platform phase."
 
 
 class RemoteRuleProviderError(ComplianceGovError):
-    """Raised when the A2 knowledge-base service returns a non-2xx response."""
+    """Raised when the enterprise-knowledge-base service returns a non-2xx response."""
 
 
 class RemoteRuleProviderAdapter:
-    """HTTP client for the shared A2 enterprise knowledge base (rule KB)."""
+    """HTTP client for the shared enterprise-knowledge-base (the platform rule source)."""
 
-    def __init__(self, settings: object) -> None:
+    def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._base_url = setting_or_default("KNOWLEDGE_BASE_URL", _DEFAULT_URL).rstrip("/")
+        env_name = settings.knowledge_base.base_url_env
+        self._base_url = setting_or_default(env_name, _DEFAULT_URL).rstrip("/")
 
     def rule_set(self, market: Market, vertical: Vertical) -> RuleSet:
         raise NotImplementedError(_PHASE)

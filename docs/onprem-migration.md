@@ -27,7 +27,7 @@ files that change):
 
 | Port | On-prem file | What to implement |
 |------|--------------|-------------------|
-| `RuleProviderPort` | `onprem/rules.py` | An on-prem governed rule-set store (your File Search / `enterprise-knowledge-base` equivalent) (R3) |
+| `RuleProviderPort` | `onprem/rules.py` | An on-prem governed rule-set store, if you want one: the `gcp` and `local` profiles serve the versioned pack bundled in the package, so porting the rules is optional and this placeholder is only for an installation whose rules live in its own store (R3) |
 | `EvidenceStorePort` | `onprem/evidence.py` | Your on-prem substantiation-evidence store (the document system holding emissions inventories, offset records, test reports and fund disclosures). Keep the tenant semantics: `list_for_asset` MUST filter on the tenant in the store, and `get` stays an unfiltered fetch so the domain owns the 403 |
 | `LlmPort` | `onprem/llm.py` | An on-prem model-serving endpoint (e.g. Gemma on your own serving stack) |
 | `GuardrailPort` | `onprem/guardrail.py` | An on-prem prompt / response screening backend (R1) |

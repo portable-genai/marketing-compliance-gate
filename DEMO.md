@@ -6,8 +6,8 @@ marketing assets across both verticals (banking + online retail) and the JP/AU/S
 
 ## A. Local demo (offline, deterministic, no cloud)
 
-Everything runs on the `local` profile: a SQLite FTS5 rule KB, the deterministic rule
-engine, and a deterministic LLM narrator. No Google Cloud SDK, no API key.
+Everything runs on the `local` profile: a SQLite FTS5 index over the bundled rule pack, the
+deterministic rule engine, and a deterministic LLM narrator. No Google Cloud SDK, no API key.
 
 ### 1. Install and prove the gate
 
@@ -131,11 +131,13 @@ same-origin, set `NEXT_PUBLIC_BASE_PATH` (reverse-proxy sub-path) and `NEXT_PUBL
 
 ## B. GCP demo (managed Gemini Enterprise Agent Platform)
 
-The same code, the `gcp` profile: the rule KB is **Gemini API File Search**, narration is
-**Gemini**, safety is **Model Armor**, audit is a **Cloud Logging WORM** bucket, tracing is
-**Cloud Trace**, and the `model-quality-gate` is the **Gen AI evaluation service**. All Google SDK
-imports are lazy, and the residency region is resolved from the active market and validated
-against the per-market allow-list.
+The same code, the `gcp` profile: the rule source is the **versioned rule pack bundled in the
+package** (the same rules the local profile serves, so there is no managed rule store to
+provision and no second set of rules to drift), narration is **Gemini**, safety is **Model
+Armor**, audit is a **Cloud Logging WORM** bucket, tracing is **Cloud Trace**, and the
+`model-quality-gate` is the **Gen AI evaluation service**. All Google SDK imports are lazy, and
+the residency region is resolved from the active market and validated against the per-market
+allow-list.
 
 ### 1. Install the managed extra and authenticate
 

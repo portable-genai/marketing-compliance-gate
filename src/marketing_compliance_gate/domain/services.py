@@ -136,7 +136,7 @@ class ReviewService:
                 requires_human_review=requires_review,
             )
             self._guard(summary, Direction.OUTPUT, actor)
-            self._record_review(review, actor)
+            self._record_review(review, actor, rule_pack_version=rule_set.version)
             # Rule R8: hand an escalated review to the human-review-console. Routing is a
             # best-effort
             # hand-off after the durable audit ESCALATED record, never fatal to an already-
@@ -317,7 +317,14 @@ class ReviewService:
         except Exception:  # noqa: BLE001 - tracing must never break the pipeline
             return nullcontext()
 
-    def _record_review(self, review: Review, actor: str) -> None:
+    def _record_review(self, review: Review, actor: str, *, rule_pack_version: str) -> None:
+        """Audit the review, naming the revision of the rule pack that produced it.
+
+        A finding is only as current as the rules it fired, so the audit event carries the
+        pack version the provider stamped on the rule set. A provider that could not say
+        which revision it served records an empty string, which is visible rather than a
+        guess.
+        """
         self._audit.record(
             AuditEvent(
                 action="review",
@@ -332,6 +339,7 @@ class ReviewService:
                     "vertical": review.vertical.value,
                     "outcome": review.outcome.value,
                     "failing": str(len(review.failing_findings)),
+                    "rule_pack_version": rule_pack_version,
                 },
             )
         )

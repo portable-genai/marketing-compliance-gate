@@ -2,8 +2,8 @@
 #
 # Switch the entire managed stack to on-prem by setting MKT_GOV_PROFILE=onprem
 # (or profile: onprem below). Nothing in src/marketing_compliance_gate/domain changes.
-# MKT_GOV_PROFILE=local runs the whole pipeline offline (SQLite FTS5 rule KB +
-# deterministic rule engine + deterministic LLM), with NO Google Cloud SDK required.
+# MKT_GOV_PROFILE=local runs the whole pipeline offline (SQLite FTS5 over the bundled rule
+# pack + deterministic rule engine + deterministic LLM), with NO Google Cloud SDK required.
 #
 # There is NO default profile. Leaving both the variable and `profile:` below unset means
 # nobody chose, which is not the same as choosing `local`: the SDK-free adapters still bind
@@ -46,21 +46,14 @@ models:
   hard_reasoning: gemini-3.5-flash  # in-region SG commitment; no Gemini 3 PRO tier serves any location
   use_hard_reasoning: false
 
+# The rule source. `gcp` and `local` serve the versioned rule pack bundled in the package
+# (src/marketing_compliance_gate/adapters/local/_seed.py, RULE_PACK_VERSION), so a deployment
+# provisions no managed rule store and fires exactly the rules the gate proved; the version is
+# stamped on every RuleSet and recorded on every review's audit event. Only the `platform`
+# profile reaches a rule store over the network: the shared enterprise-knowledge-base, at the
+# base URL the variable named here carries.
 knowledge_base:
-  base_url_env: KNOWLEDGE_BASE_URL              # A2 Enterprise KB (D6's compliance rule store)
-  data_store_id: mkt-gov-rule-kb        # only used by the standalone GCP File Search adapter
-  # NOT the deploy region, and it cannot be. Agent Search serves exactly `global`, `us` and
-  # `eu` and no Cloud region at all, so `asia-southeast1` -- pinned here until 2026-08-27 --
-  # could never provision: the apply fails, or the SDK resolves a hostname that does not
-  # exist. See docs/gcp-service-region-availability.md in org-metadata.
-  #
-  # `global` is a DELIBERATE residency deviation, recorded rather than absorbed: it carries no
-  # residency guarantee, so the index is unlocated while everything around it stays in region.
-  # `us` or `eu` would confine the index to one jurisdiction and is the stronger choice where a
-  # residency obligation bites; an installation under one sets this accordingly. The
-  # gcp.resourceLocations Org Policy must be wide enough to permit whichever is chosen.
-  location: global
-  top_k: 10
+  base_url_env: KNOWLEDGE_BASE_URL
 
 model_armor:
   template_id: mkt-gov-guardrail
@@ -78,9 +71,8 @@ agent_engine:
 # Local profile stores (SDK-free). Empty paths default under ~/.marketing_compliance_gate/;
 # tests use ":memory:" for ephemeral, deterministic SQLite. No Google Cloud here.
 local:
-  db_path: ${MKT_GOV_LOCAL_DB:-}            # SQLite FTS5 compliance rule-KB index
+  db_path: ${MKT_GOV_LOCAL_DB:-}            # SQLite FTS5 index over the bundled rule pack
   audit_path: ${MKT_GOV_LOCAL_AUDIT:-}      # append-only local audit (WORM stand-in)
-  seed_path: ${MKT_GOV_LOCAL_SEED:-}        # rule-set seed JSON ("" => bundled fictional seed)
   evidence_path: ${MKT_GOV_LOCAL_EVIDENCE:-}  # SQLite substantiation-evidence store
   consent_path: ${MKT_GOV_LOCAL_CONSENT:-}    # SQLite consent and preference store
 
@@ -124,8 +116,12 @@ adapters:
     platform: marketing_compliance_gate.adapters.gcp.iap_identity:IapIdentityAdapter
     local: marketing_compliance_gate.adapters.local.identity:LocalPersonaIdentityAdapter
     onprem: marketing_compliance_gate.adapters.onprem.identity:OnPremIdentityAdapter
+  # The rule source. gcp serves the versioned pack bundled in the package, in memory: the
+  # deployment provisions no rule store, and a review there fires the rules the gate proved.
+  # local indexes the same pack in SQLite FTS5 (seedable, so tests can swap the rules);
+  # platform is the HTTP client to the shared enterprise-knowledge-base.
   rule_provider:
-    gcp: marketing_compliance_gate.adapters.gcp.file_search_rules:FileSearchRuleProviderAdapter
+    gcp: marketing_compliance_gate.adapters.bundled.rules:BundledRulePackAdapter
     platform: marketing_compliance_gate.adapters.platform.remote_rules:RemoteRuleProviderAdapter
     local: marketing_compliance_gate.adapters.local.rules:LocalRuleProviderAdapter
     onprem: marketing_compliance_gate.adapters.onprem.rules:OnPremRuleProviderAdapter

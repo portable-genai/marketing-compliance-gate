@@ -7,7 +7,7 @@
 #     resources defined in the sibling files.
 #
 # Mapping to config/settings.yaml gcp adapter bindings:
-#   rule_provider (file_search_rules) -> aiplatform   (Gemini API File Search over the rule KB)
+#   rule_provider (bundled/rules)     -> none         (the versioned rule pack in the package)
 #   llm           (gemini_llm)        -> aiplatform   (Gemini reasoning / triage)
 #   evaluation    (genai_eval)        -> aiplatform   (Vertex Gen AI evaluation)
 #   guardrail     (model_armor_*)     -> modelarmor   (regional Model Armor screening)
@@ -21,7 +21,7 @@
 locals {
   required_services = [
     # --- marketing-compliance-gate adapter-backing services (only what the gcp profile uses) ---
-    "aiplatform.googleapis.com", # Gemini File Search + reasoning/triage + Gen AI eval
+    "aiplatform.googleapis.com", # Gemini reasoning/triage + Gen AI eval
     "modelarmor.googleapis.com", # Model Armor guardrail (regional endpoint)
     "firestore.googleapis.com",  # the consent and substantiation-evidence stores (firestore.tf)
     "logging.googleapis.com",    # Cloud Logging WORM bucket + audit sink

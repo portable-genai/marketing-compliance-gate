@@ -20,9 +20,9 @@ offline gate rather than deferred to a managed suite, and they are. The executio
 explicit local container so they choose their own profile instead of inheriting whatever the
 Makefile exported.
 
-**What they still do not prove:** the managed adapters. ``file_search_rules`` needs a live
-Gemini File Search store, so its residency call is asserted by the schema guard below rather
-than executed. That belongs in the managed suite.
+**What they still do not prove:** the managed LLM, guardrail and audit adapters, which need
+live services and belong in the managed suite. The managed RULE source needs none: it is the
+bundled pack, and ``test_gcp_rule_source_is_the_bundled_pack.py`` executes a review over it.
 """
 
 from __future__ import annotations
@@ -166,10 +166,6 @@ def test_every_tool_requires_the_scope_its_rule_lookup_cannot_do_without(
     filter over some broader default. There is no broader default: ``RuleProviderPort.search``
     takes both and every adapter filters on both, so a handler serving a call that omitted them
     would have to pick a market. Picking one answers a Singapore question with Japanese rules.
-
-    The managed adapter makes it a residency question rather than only a wrong answer:
-    ``file_search_rules.search`` calls ``resolve_region(settings, market=market)``, so an
-    optional market is an optional per-market residency check.
     """
     for spec in catalog.list_tools():
         properties = spec.input_schema["properties"]
@@ -178,8 +174,7 @@ def test_every_tool_requires_the_scope_its_rule_lookup_cannot_do_without(
             if key in properties:
                 assert key in required, (
                     f"{spec.name} declares {key} optional; the rule lookup it resolves to "
-                    f"cannot be performed without it, and the managed adapter keys the "
-                    f"residency check on it"
+                    f"cannot be performed without it"
                 )
 
 

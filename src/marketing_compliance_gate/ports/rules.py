@@ -1,12 +1,13 @@
-"""RuleProviderPort — the per-market, per-vertical compliance rule KB.
+"""RuleProviderPort — the per-market, per-vertical compliance rule source.
 
 D6 grounds every review on the advertising + consumer-protection + consent rules in
-force for the asset's (market, vertical). The primary GCP adapter is **Gemini API File
-Search** over the rule corpus (the rule KB); the ``platform`` adapter is a thin HTTP
-client to the shared A2 Enterprise Knowledge Base; the local adapter is an in-process
-SQLite FTS5 store over the seeded fictional rule sets. The port returns a fully-typed
-:class:`RuleSet` so the deterministic :class:`RuleEngine` can evaluate it; the LLM never
-sees the rules until after the engine has decided the findings.
+force for the asset's (market, vertical). The ``gcp`` adapter serves the versioned rule
+pack bundled in the package from memory, so a deployment provisions no managed rule store;
+the ``local`` adapter indexes the same pack in SQLite FTS5 (seedable, for tests); the
+``platform`` adapter is a thin HTTP client to the shared ``enterprise-knowledge-base``. The
+port returns a fully-typed :class:`RuleSet`, stamped with the pack version it came from, so
+the deterministic :class:`RuleEngine` can evaluate it; the LLM never sees the rules until
+after the engine has decided the findings.
 """
 
 from __future__ import annotations

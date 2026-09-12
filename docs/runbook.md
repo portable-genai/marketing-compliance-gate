@@ -16,7 +16,7 @@ allowlist is empty. Name the profile deliberately.
 
 - `local` (SDK-free): the whole pipeline runs offline (deterministic rule engine and
   LLM, in-memory rule sets). No Google Cloud SDK. This is what CI and the demo run.
-- `gcp`: the managed stack (File Search rule KB, Model Armor, Cloud Logging).
+- `gcp`: the managed stack (the bundled versioned rule pack, Model Armor, Cloud Logging).
 - `platform`: consume the shared Hrz services (guardrail / KB / audit / eval / registry) over
   S2S.
 - `onprem`: fail-fast placeholders that raise `NotImplementedError`, the migration target (see
@@ -114,9 +114,16 @@ agent uses its in-process FunctionTools.
 ## 3. Rule sets and grounding
 
 Every review is grounded in the per-market, per-vertical rule set (`RuleProviderPort`). Under
-`gcp` / `platform` the rule set comes from the `enterprise-knowledge-base` governed KB (File Search); under `local` it
-is the bundled fictional rule seed. Keep the rule KB versioned: a review is only as current as
-the rules it fired, and the audit record cites the rule ids so a change is traceable.
+`gcp` and `local` the rule set is the versioned rule pack bundled in the package
+(`adapters/local/_seed.py`, `RULE_PACK_VERSION`); only `platform` fetches it from the
+`enterprise-knowledge-base` governed KB over HTTP. **The deployment provisions no rule store**,
+so there is no managed index for an operator to edit, leave empty, or let drift from the rules
+the gate proved: changing a rule is a reviewed repository change that bumps the version.
+
+The version travels. `RuleSet.version` is stamped by the provider, `mkt-gov rules` prints it,
+and `_record_review` writes it to the audit event as `rule_pack_version`, so a finding is
+traceable to the revision of the rules that produced it. A provider that cannot say which
+revision it served records an empty string, which is visible rather than a guess.
 
 ## 3b. The green-claims gate: the rule pack and the evidence store
 
@@ -203,8 +210,9 @@ auditor; omit it to age evidence against today.
 ## 4. Region selection and fail-fast
 
 The Terraform `region` is validated against the residency allowlist; an apply against a region
-outside it fails at `terraform plan`, before anything is created. File Search, Cloud Logging and
-the WORM bucket are all created in the selected region, and a `gcp.resourceLocations` Org Policy
+outside it fails at `terraform plan`, before anything is created. Cloud Logging, the WORM
+bucket and the Firestore stores are all created in the selected region, and a
+`gcp.resourceLocations` Org Policy
 hard-restricts resource creation to it. The app also validates the active market's region at
 load, so a mismatched deploy fails fast on both sides.
 
