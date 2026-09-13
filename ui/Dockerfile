@@ -19,10 +19,15 @@ RUN npm ci
 
 COPY . .
 
-ARG NEXT_PUBLIC_BASE_PATH=""
-ARG NEXT_PUBLIC_API_BASE=""
-ENV NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH} \
-    NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+# NO empty defaults and NO `ENV` assignment, and both halves are the fix rather than tidying.
+# The console reads these three-state: unset takes the documented default, set-and-empty is a
+# REFUSAL. `ARG X=""` plus an unconditional `ENV X=${X}` turned "not passed" into "passed as
+# empty", so `docker build ui` with no arguments could not build this image at all, and failed
+# with an error about an emptied variable rather than a missing argument. A bare `ARG` reaches
+# the build's `RUN` steps as a genuine environment variable when it is passed, and stays UNSET
+# when it is not: verified by execution rather than by reading the reference.
+ARG NEXT_PUBLIC_BASE_PATH
+ARG NEXT_PUBLIC_API_BASE
 
 # The build context is ui/, so only the console's own checks run here; the Python suite and the
 # browser demo need the full checkout and run in CI instead. `assert-hydratable` is the one that
