@@ -12,8 +12,10 @@
 #   - vpc_sc_denials   : a VPC Service Controls violation (perimeter working / being probed).
 #   - cmek_changes     : a CMEK key destroy/update (key-material change).
 #
-# Alert policies are always created; var.alert_notification_channels attaches channels (an
-# empty list still creates the policy, just with nowhere to notify, so wire a channel in prod).
+# Alert policies exist only when var.posture_alerts_enabled is true (default false: every
+# metric-based condition is billed, and a reference deployment pages nobody). When enabled,
+# var.alert_notification_channels attaches channels (an empty list still creates the policy,
+# just with nowhere to notify, so wire a channel in prod).
 #
 # EVERY alert condition restricts resource.type as well as metric.type, because Cloud Monitoring
 # REFUSES a threshold condition that names only the metric:
@@ -80,7 +82,7 @@ locals {
 }
 
 resource "google_logging_metric" "security" {
-  for_each = local.security_metrics
+  for_each = var.posture_alerts_enabled ? local.security_metrics : {}
 
   project     = var.project_id
   name        = "mkt_gov_${each.key}"
@@ -97,7 +99,7 @@ resource "google_logging_metric" "security" {
 }
 
 resource "google_monitoring_alert_policy" "security" {
-  for_each = local.security_metrics
+  for_each = var.posture_alerts_enabled ? local.security_metrics : {}
 
   project      = var.project_id
   display_name = "marketing-compliance-gate security: ${each.key}"

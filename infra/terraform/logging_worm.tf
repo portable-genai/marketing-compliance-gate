@@ -47,10 +47,11 @@ resource "google_logging_project_sink" "audit_to_worm" {
 
   destination = "logging.googleapis.com/${google_logging_project_bucket_config.worm_audit.id}"
 
-  # Capture this app's audit log + all Cloud Audit Logs (admin/data access).
+  # This app's audit log only. Cloud Audit Logs used to be routed here as well, which
+  # copied every admin and data-access entry into a second CMEK bucket per stack; _Default
+  # already keeps them for 30 days, and this bucket is the application's ledger.
   filter = <<-EOT
     logName="projects/${var.project_id}/logs/marketing-compliance-gate-audit"
-    OR logName:"cloudaudit.googleapis.com"
   EOT
 
   unique_writer_identity = true
