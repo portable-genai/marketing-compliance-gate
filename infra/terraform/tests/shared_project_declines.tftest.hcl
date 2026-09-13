@@ -110,6 +110,7 @@ run "the_next_best_action_topology_still_plans_whole" {
     mkt5_project_number            = "111111111111"
     mkt6_project_number            = "222222222222"
     shared_vpc_host_project_number = "333333333333"
+    manage_audit_config            = true
   }
 
   override_data {
@@ -153,7 +154,7 @@ run "the_next_best_action_topology_still_plans_whole" {
 
   assert {
     condition     = length(google_access_context_manager_service_perimeter.mkt_gov) == 1 && length(google_project_iam_audit_config.data_access) == 1
-    error_message = "With no override, the shared perimeter and the audit config are created."
+    error_message = "The shared perimeter arrives with no override; the audit config arrives only when a deployment names manage_audit_config = true."
   }
 
   assert {
