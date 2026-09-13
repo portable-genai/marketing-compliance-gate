@@ -408,3 +408,16 @@ variable "resource_location_values" {
     error_message = "Each value must be an Org Policy location value group (in:...) or a literal location (is:...)."
   }
 }
+
+variable "posture_alerts_enabled" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Whether this stack creates the posture alert policies and the log-based metrics behind
+    them (service-account key creation, VPC-SC denials, CMEK changes, guardrail blocks).
+    False by default. Cloud Monitoring bills every metric-based alert condition, and a
+    reference deployment that nobody pages gains nothing from them: the signals still land in
+    Cloud Logging, where a presenter can read them. Set true in a deployment with an on-call
+    rota to notify, in that deployment's own tfvars.
+  EOT
+}

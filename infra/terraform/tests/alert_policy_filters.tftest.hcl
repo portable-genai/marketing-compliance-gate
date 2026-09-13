@@ -29,8 +29,9 @@ run "every_alert_condition_restricts_resource_type_and_names_a_real_one" {
   command = plan
 
   variables {
-    worm_locked   = false
-    enable_vpc_sc = false
+    worm_locked            = false
+    enable_vpc_sc          = false
+    posture_alerts_enabled = true
   }
 
   # The count is asserted first and separately: every assertion below walks the conditions, and a
