@@ -48,7 +48,7 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
 
   template {
     # Encrypt the revision with the regional CMEK key.
-    encryption_key                   = google_kms_crypto_key.mkt_gov.id
+    encryption_key                   = one(google_kms_crypto_key.mkt_gov[*].id)
     service_account                  = google_service_account.runtime.email
     max_instance_request_concurrency = 80
 
@@ -104,7 +104,7 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
       }
       env {
         name  = "MKT_GOV_KMS_KEY"
-        value = google_kms_crypto_key.mkt_gov.id
+        value = one(google_kms_crypto_key.mkt_gov[*].id)
       }
       env {
         name  = "MKT6_S2S_AUDIENCE"

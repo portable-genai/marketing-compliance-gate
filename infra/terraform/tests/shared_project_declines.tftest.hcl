@@ -21,6 +21,7 @@ run "an_embedded_install_in_a_shared_project_creates_only_what_the_console_reads
   command = plan
 
   variables {
+    cmek_enabled                        = true
     worm_locked                         = false
     retention_days                      = 30
     manage_org_policies                 = false
@@ -99,6 +100,7 @@ run "the_next_best_action_topology_still_plans_whole" {
   command = plan
 
   variables {
+    cmek_enabled                   = true
     worm_locked                    = true
     standalone_service_enabled     = true
     container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
