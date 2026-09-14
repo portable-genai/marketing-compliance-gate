@@ -94,6 +94,7 @@ controls, decline them by variable:
 |---|---|---|---|
 | Org Policies (`gcp.resourceLocations` and three hardening constraints) | `manage_org_policies` | `false` | One value per constraint per project, and this stack's strictest form would narrow a sibling's |
 | Data-access audit config | `manage_audit_config` | `false` | Authoritative per service: applying it replaces the owner's configuration |
+| Customer-managed encryption | `cmek_enabled` | `false` | Creates the key ring and key and binds every store, log bucket and revision to it; irreversible once applied, so decided before the first apply |
 | Posture alerts | `posture_alerts_enabled` | `false` | Four billed alert conditions that page nobody on a reference deployment; the signals land in Cloud Logging regardless |
 | VPC-SC perimeter | `enable_vpc_sc` | `false` | A second regular perimeter would enforce where the owner observes |
 | Model Armor malicious-URI filter and multi-language detection | `model_armor_full_capabilities` | `false` in `asia-southeast1` | The region serves neither and refuses the whole template |

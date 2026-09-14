@@ -29,6 +29,7 @@ run "every_alert_condition_restricts_resource_type_and_names_a_real_one" {
   command = plan
 
   variables {
+    cmek_enabled           = true
     worm_locked            = false
     enable_vpc_sc          = false
     posture_alerts_enabled = true
