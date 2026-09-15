@@ -41,7 +41,8 @@ resource "google_project_iam_member" "runtime" {
 
 # The runtime uses the CMEK for envelope ops it performs directly.
 resource "google_kms_crypto_key_iam_member" "runtime" {
-  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.mkt_gov[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.runtime.email}"
 }

@@ -51,7 +51,7 @@ output "runtime_service_account" {
 # --------------------------------- KMS -------------------------------------- #
 output "kms_key" {
   description = "Regional CMEK crypto key id (MKT_GOV_KMS_KEY)."
-  value       = google_kms_crypto_key.mkt_gov.id
+  value       = one(google_kms_crypto_key.mkt_gov[*].id)
 }
 
 # ------------------------------- WORM logging ------------------------------- #

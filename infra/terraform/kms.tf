@@ -10,6 +10,7 @@
 #     key, never the global / multi-region key. Regional CMEK pins crypto material in-country.
 
 resource "google_kms_key_ring" "mkt_gov" {
+  count    = var.cmek_enabled ? 1 : 0
   name     = "marketing-compliance-gate"
   location = var.region # regional, in-country key material
 
@@ -17,8 +18,9 @@ resource "google_kms_key_ring" "mkt_gov" {
 }
 
 resource "google_kms_crypto_key" "mkt_gov" {
+  count    = var.cmek_enabled ? 1 : 0
   name     = "mkt-gov-cmek"
-  key_ring = google_kms_key_ring.mkt_gov.id
+  key_ring = one(google_kms_key_ring.mkt_gov[*].id)
 
   purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s" # 90 days — periodic rotation for key hygiene
@@ -46,22 +48,24 @@ data "google_project" "this" {
 # Cloud Run service agent (CMEK on the standalone service revision). Only when that service runs:
 # an embedded installation's revisions belong to the portal and encrypt under the portal's key.
 resource "google_kms_crypto_key_iam_member" "run" {
-  count         = var.standalone_service_enabled ? 1 : 0
-  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  count         = var.cmek_enabled && (var.standalone_service_enabled) ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.mkt_gov[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@serverless-robot-prod.iam.gserviceaccount.com"
 }
 
 # Cloud Logging service agent (CMEK on the WORM audit bucket).
 resource "google_kms_crypto_key_iam_member" "logging" {
-  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.mkt_gov[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-logging.iam.gserviceaccount.com"
 }
 
 # Vertex AI / Gen AI eval service agent (CMEK on evaluation + reasoning state).
 resource "google_kms_crypto_key_iam_member" "aiplatform" {
-  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.mkt_gov[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
 }
@@ -71,7 +75,8 @@ resource "google_kms_crypto_key_iam_member" "aiplatform" {
 # indistinguishable in the console from the CMEK case: the failure mode is a silent downgrade,
 # not an error.
 resource "google_kms_crypto_key_iam_member" "firestore" {
-  crypto_key_id = google_kms_crypto_key.mkt_gov.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.mkt_gov[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-firestore.iam.gserviceaccount.com"
 }

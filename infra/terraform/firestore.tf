@@ -67,7 +67,7 @@ variable "firestore_cmek_key" {
     Full resource id of the KMS key to encrypt the Firestore databases with, or "" to use
     Google-managed keys. Empty by DEFAULT because Firestore CMEK is allowlist-gated by Google
     and a project that has not been admitted cannot create a CMEK database: the apply fails
-    outright. Set it to google_kms_crypto_key.mkt_gov.id on a deployment that has been
+    outright. Set it to one(google_kms_crypto_key.mkt_gov[*].id) on a deployment that has been
     admitted. Recorded as externally blocked in org-metadata/docs/deployment-posture.md.
   EOT
   type        = string
