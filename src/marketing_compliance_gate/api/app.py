@@ -20,10 +20,11 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from hex_service_kit import cors_allowlist
+from hex_service_kit.logging import configure_logging
 from hex_service_kit.netdefaults import ConfiguredEmptyError, read_env_setting
 from hex_service_kit.web import add_loopback_exposure_guard, make_require_service_caller
 
-from ..config import Settings, end_user_auth_kind
+from ..config import Settings, end_user_auth_kind, resolve_profile
 from ..domain.consent import (
     ChannelPreference,
     ConsentBasis,
@@ -193,6 +194,20 @@ def _cors_origins() -> list[str]:
     )
     _refuse_wildcard(origins, _CORS_ORIGINS_ENV)
     return origins
+
+
+#: Service name on every log line. The repository slug: stable, greppable, and the same
+#: string the tracer already reports as `service.name`.
+_SERVICE_NAME = "marketing-compliance-gate"
+
+# Configured at MODULE scope, and before the app object is built, for the reason the exposure
+# guard is bound there too: the Dockerfile CMD and `make run-api` serve the app OBJECT, so
+# anything living only inside a function never runs in a shipped process. Before this call the
+# deployed service wrote unparsed text to stdout: no `severity`, so Cloud Logging could not
+# colour an error or drive a log-based metric from one, and no trace field, so a log line
+# never joined the request it came from. The profile comes from `resolve_profile`, the one
+# reader of MKT_GOV_PROFILE that the profile drift guard permits.
+configure_logging(resolve_profile().profile, service=_SERVICE_NAME)
 
 
 app = FastAPI(
