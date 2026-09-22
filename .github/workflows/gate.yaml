@@ -56,3 +56,5 @@ jobs:
       make_targets: "gate ui-check demo-selftest portability"
       npm_directory: "ui"
       npm_directory_first: true
+      terraform_directory: "infra/terraform"
+      terraform_test: true
