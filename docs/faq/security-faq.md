@@ -113,7 +113,5 @@ seed use obviously-fictional names and `example.test` URLs.
   is not yet set (C6 PARTIAL).
 - The platform guardrail / rules / audit / registry delegates are phase stubs, not live S2S
   clients yet.
-- No CI `terraform fmt` / `validate` job, and provider binaries are committed under
-  `infra/terraform/.terraform/` (D5 PARTIAL, repo hygiene).
 - This is a reference build: run your own pen-test, threat model and model-risk review before
   any live-data deployment.
