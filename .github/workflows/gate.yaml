@@ -54,6 +54,8 @@ jobs:
       runner_archive_sha256: "90c0ea91161b5bb6aa603c0d4a7b817fcf9ddf4ff235a14c9bdfc3327eb58eb9"
       job_id: "offline-gate"
       make_targets: "gate ui-check demo-selftest portability"
+      runtime_lockfile: "requirements-gcp.lock"
+      iap_matrix_path: "tests/unit/test_iap_crypto_matrix.py"
       npm_directory: "ui"
       npm_directory_first: true
       terraform_directory: "infra/terraform"
