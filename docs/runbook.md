@@ -73,6 +73,8 @@ export MKT6_S2S_AUDIENCE="$(terraform output -raw s2s_audience)"
 # 3. Install the managed stack and run the API.
 pip install -e ".[gcp,dev]"
 export GOOGLE_CLOUD_PROJECT=your-sg-project MKT_GOV_PROFILE=gcp
+# Review routing is on by default and refuses to boot without its console (section 6).
+export HUMAN_REVIEW_URL=https://review.example.test   # or MKT_GOV_REVIEW_ROUTING=off
 gcloud auth application-default login
 make run-api PROFILE=gcp          # FastAPI on :8105 (front with the platform ingress)
 ```
@@ -245,6 +247,26 @@ To stop serving without tearing down state: scale the Cloud Run / Agent Runtime 
 zero, or remove the app service account's `roles/aiplatform.user` binding. The audit trail
 remains intact.
 
+### Runtime controls
+
+`MKT_GOV_GUARDRAIL` and `MKT_GOV_REVIEW_ROUTING` each switch one cheap runtime control, read
+in three states: unset is on, `true`/`false` (or `on`/`off`) wins, and an emptied or
+unrecognised value refuses at boot. Off binds a disabled adapter, and a process with any
+control off logs one warning at startup naming each. Terraform states them as
+`guardrail_enabled` and `review_routing_enabled`. There is no PII-redaction port in this
+service, so there is no redaction switch.
+
+- **Pause escalations:** set `MKT_GOV_REVIEW_ROUTING=off`. Reviews, green-claim assessments
+  and unevidenced consent grants still require a checker and are still audited, and every
+  response reports `review_routing: "off"` so the user is told the item is not queued.
+- **Under `gcp` or `platform`, routing on needs `HUMAN_REVIEW_URL`.** Unset, the process
+  refuses to boot and says to name the console or switch routing off; it no longer starts and
+  then fails every hand-off at request time.
+- **A failed hand-off does not fail the request.** The response carries
+  `review_routing: "failed"` (`routed`, `off` and `not_required` are the other values), the
+  failure is logged at WARNING with the exception type, and the console says the item is not
+  queued for review.
+
 ## 7. Common failures
 
 | Symptom | Likely cause | Fix |
@@ -254,6 +276,7 @@ remains intact.
 | `403` on `GET /v1/evidence/{id}` | The record belongs to another tenant | Expected: object-level authorization refused it. Check the principal's tenant, not the record |
 | Every green claim comes back `unsubstantiated` | Evidence missing its `issued_date`, tagged with the wrong tenant, or filed under another category | Fix the ingestion mapping; undated, mis-tenanted and mis-categorised evidence never counts |
 | `GreenClaimPackError` (HTTP 500) on `/v1/substantiation` | The configured green-claim pack is missing or invalid | Validate the pack (section 3b); revert `MKT_GOV_GREEN_PACK` to the shipped reference pack |
+| The revision refuses to start naming `HUMAN_REVIEW_URL` | Review routing is on under `gcp`/`platform` and no console is named | Set `HUMAN_REVIEW_URL` (Terraform `human_review_url`), or state `MKT_GOV_REVIEW_ROUTING=off` (`review_routing_enabled = false`) |
 | Guardrail block on a benign asset (HTTP 400) | Model Armor template too strict | Tune the `model_armor` template filter confidence levels |
 | CORS error from the embedded UI | Origin not in the per-tenant allowlist | Add the parent origin to `MKT_GOV_CORS_ORIGINS` (never `*`) |
 | HTTP 503 "refusing to serve the unauthenticated ... posture" | The bound identity adapter does not verify the end user (seeded personas, the on-prem placeholder, or no profile chosen) and the peer is not loopback | Front the service with IAP and set `MKT_GOV_PROFILE=gcp`, or serve the offline demo on loopback only. `MKT_GOV_ALLOW_INSECURE_DEMO=1` accepts the exposure deliberately |

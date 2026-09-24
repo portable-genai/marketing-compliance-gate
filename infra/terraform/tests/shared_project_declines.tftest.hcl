@@ -15,6 +15,9 @@ mock_provider "google-beta" {}
 variables {
   project_id = "fictional-marketing-project"
   org_id     = "123456789012"
+  # A standalone service routes to a review console, as a managed deployment with routing on
+  # must: it refuses to boot without one.
+  human_review_url = "https://review.fictional-bank.example"
 }
 
 run "an_embedded_install_in_a_shared_project_creates_only_what_the_console_reads" {
@@ -254,4 +257,98 @@ run "a_locked_bucket_refuses_a_short_window" {
   }
 
   expect_failures = [var.retention_days]
+}
+
+# A standalone service that switches review routing off needs no console, and must TELL the
+# service it is off rather than leave it to infer that from a missing URL.
+run "the_standalone_service_with_routing_stated_off_needs_no_console" {
+  command = plan
+
+  variables {
+    cmek_enabled                   = true
+    worm_locked                    = false
+    standalone_service_enabled     = true
+    enable_vpc_sc                  = false
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
+    shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+    s2s_audience                   = "https://mkt6-consent.internal.example"
+    mkt5_caller_service_account    = "mkt-nba-run@fictional-nba-project.iam.gserviceaccount.com"
+    mkt5_project_number            = "111111111111"
+    mkt6_project_number            = "222222222222"
+    shared_vpc_host_project_number = "333333333333"
+    human_review_url               = ""
+    review_routing_enabled         = false
+  }
+
+  override_data {
+    target = data.google_project.this
+    values = { number = "222222222222" }
+  }
+
+  override_data {
+    target = data.google_project.shared_vpc_host
+    values = { number = "333333333333" }
+  }
+
+  override_data {
+    target = data.google_compute_subnetwork.shared_cloud_run
+    values = {
+      private_ip_google_access = true
+      ip_cidr_range            = "10.10.0.0/26"
+      network                  = "https://www.googleapis.com/compute/v1/projects/fictional-network-host/global/networks/mkt-prod"
+    }
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.mkt_gov[0].template[0].containers[0].env : item.value if item.name == "MKT_GOV_REVIEW_ROUTING"]) == "false"
+    error_message = "A deployment that switches routing off must tell the service so, not leave it to infer that from a missing console."
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.mkt_gov[0].template[0].containers[0].env : item.value if item.name == "MKT_GOV_GUARDRAIL"]) == "true"
+    error_message = "The guardrail stays on unless a deployment says otherwise."
+  }
+}
+
+# With routing on, a standalone service that names no console is refused at plan rather than
+# deployed into a revision that cannot boot.
+run "the_standalone_service_refuses_to_route_to_no_console" {
+  command = plan
+
+  variables {
+    worm_locked                    = false
+    standalone_service_enabled     = true
+    enable_vpc_sc                  = false
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
+    shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+    s2s_audience                   = "https://mkt6-consent.internal.example"
+    mkt5_caller_service_account    = "mkt-nba-run@fictional-nba-project.iam.gserviceaccount.com"
+    mkt5_project_number            = "111111111111"
+    mkt6_project_number            = "222222222222"
+    shared_vpc_host_project_number = "333333333333"
+    human_review_url               = ""
+  }
+
+  override_data {
+    target = data.google_project.this
+    values = { number = "222222222222" }
+  }
+
+  override_data {
+    target = data.google_project.shared_vpc_host
+    values = { number = "333333333333" }
+  }
+
+  override_data {
+    target = data.google_compute_subnetwork.shared_cloud_run
+    values = {
+      private_ip_google_access = true
+      ip_cidr_range            = "10.10.0.0/26"
+      network                  = "https://www.googleapis.com/compute/v1/projects/fictional-network-host/global/networks/mkt-prod"
+    }
+  }
+
+  expect_failures = [var.human_review_url]
 }

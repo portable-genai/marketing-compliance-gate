@@ -16,6 +16,17 @@ from marketing_compliance_gate.config import LocalSettings, Settings
 from marketing_compliance_gate.domain.errors import UnsupportedMarketError
 from marketing_compliance_gate.domain.models import Market, Vertical
 
+
+@pytest.fixture(autouse=True)
+def _managed_deployment_names_its_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A managed process with review routing on refuses to boot without a console.
+
+    These tests load the managed profile to exercise something other than routing, so they
+    name a console the way any managed deployment must.
+    """
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+
+
 CONFIG_PATH = "config/settings.yaml"
 
 

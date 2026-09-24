@@ -133,6 +133,27 @@ _SEV_COLOR = {
 }
 
 
+#: What the operator is told about the hand-off, in plain words. A result that required review
+#: but is not queued must say so rather than read as reviewed.
+_REVIEW_ROUTING_TEXT = {
+    "routed": "Sent to the review console.",
+    "failed": "Could not reach the review console; this item is not queued for review.",
+    "off": "Review routing is off in this deployment; this item is not queued for review.",
+}
+
+
+def _echo_review_routing(routing: Any) -> None:
+    """Print the hand-off outcome, or nothing when nothing required review."""
+    if routing is None:
+        return
+    outcome = routing.outcome.value
+    text = _REVIEW_ROUTING_TEXT.get(outcome)
+    if text is None:
+        return
+    colour = typer.colors.GREEN if outcome == "routed" else typer.colors.RED
+    typer.secho(f"  Human review hand-off: {outcome}. {text}", fg=colour, bold=True)
+
+
 def _echo_review(review: Review) -> None:
     typer.secho(f"\nCOMPLIANCE REVIEW: {review.asset_id}", bold=True)
     typer.echo(f"  id        : {review.id}")
@@ -284,9 +305,10 @@ def review(
     as it is on ``substantiate``. Over HTTP the tenant is always the verified principal's and
     can never be supplied by the caller.
     """
-    from ..api.deps import make_review_service
+    from ..api.deps import get_container, make_review_service, recording_router
     from ..domain.models import AssetType, Market, MarketingAsset, ReviewRequest, Vertical
 
+    hand_off: dict[str, Any] = {}
     fields: dict[str, str] = {}
     for item in field or ():
         key, _, value = item.partition("=")
@@ -304,12 +326,15 @@ def review(
             audience_subject_id=subject,
             submitted_by=_CLI_ACTOR,
         )
-        return make_review_service().review(
+        container = get_container()
+        hand_off["routing"] = routing = recording_router(container)
+        return make_review_service(container, review_router=routing).review(
             ReviewRequest(asset=asset), actor=_CLI_ACTOR, tenant=tenant
         )
 
     result = _run("review", go)
     _echo_review(result)
+    _echo_review_routing(hand_off.get("routing"))
 
 
 @app.command()
@@ -344,10 +369,11 @@ def substantiate(
     """
     from datetime import date
 
-    from ..api.deps import make_substantiation_service
+    from ..api.deps import get_container, make_substantiation_service, recording_router
     from ..domain.identity import Principal
     from ..domain.models import AssetType, Market, MarketingAsset, Vertical
 
+    hand_off: dict[str, Any] = {}
     fields: dict[str, str] = {}
     for item in field or ():
         key, _, value = item.partition("=")
@@ -365,11 +391,14 @@ def substantiate(
             submitted_by=_CLI_ACTOR,
         )
         principal = Principal(subject=_CLI_ACTOR, tenant=tenant, source="cli")
-        return make_substantiation_service().assess(
+        container = get_container()
+        hand_off["routing"] = routing = recording_router(container)
+        return make_substantiation_service(container, review_router=routing).assess(
             asset, principal, as_of=date.fromisoformat(as_of) if as_of else None
         )
 
     _echo_assessment(_run("substantiate", go))
+    _echo_review_routing(hand_off.get("routing"))
 
 
 @app.command()

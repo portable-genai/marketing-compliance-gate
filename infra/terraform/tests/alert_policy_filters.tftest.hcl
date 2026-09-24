@@ -23,6 +23,9 @@ mock_provider "google-beta" {}
 variables {
   project_id = "fictional-marketing-project"
   org_id     = "123456789012"
+  # A standalone service routes to a review console, as a managed deployment with routing on
+  # must: it refuses to boot without one.
+  human_review_url = "https://review.fictional-bank.example"
 }
 
 run "every_alert_condition_restricts_resource_type_and_names_a_real_one" {

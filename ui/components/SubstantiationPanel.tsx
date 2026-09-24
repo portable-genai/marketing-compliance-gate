@@ -1,5 +1,6 @@
 import type { ClaimCoverage, SubstantiationAssessment, SubstantiationEvidence } from "@/lib/types";
 import { CitationList } from "./CitationList";
+import { ReviewRoutingNote } from "./ReviewRoutingNote";
 
 /**
  * The green-claims panel: what the asset claims about the environment, what evidence the
@@ -136,6 +137,7 @@ export function SubstantiationPanel({
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
           HUMAN REVIEW REQUIRED &mdash; a green claim never publishes on the agent&rsquo;s say-so.
           A qualified compliance officer signs off in the review console before this asset runs.
+          <ReviewRoutingNote routing={assessment.review_routing} />
         </div>
       ) : null}
 
