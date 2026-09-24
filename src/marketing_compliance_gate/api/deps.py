@@ -2,11 +2,16 @@
 
 One place that wires the ports resolved by :class:`marketing_compliance_gate.config.Container`
 into the domain orchestrator, so the CLI, API and agent layers share identical wiring.
+
+Each factory takes an optional ``review_router``: a caller that reports the hand-off passes a
+:class:`~marketing_compliance_gate.adapters.controls.RecordingReviewRouter` wrapping the
+container's router (:func:`recording_router`), and reads its ``outcome`` afterwards.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
 from ..config import Container, build_container
 from ..domain.consent_service import ConsentService
@@ -20,7 +25,9 @@ def get_container() -> Container:
     return build_container()
 
 
-def make_review_service(container: Container | None = None) -> ReviewService:
+def make_review_service(
+    container: Container | None = None, *, review_router: Any = None
+) -> ReviewService:
     """Wire the review pipeline, INCLUDING the consent and preference store.
 
     The store is on this list because a review's consent findings are read from it: the asset
@@ -36,11 +43,13 @@ def make_review_service(container: Container | None = None) -> ReviewService:
         tracer=container.tracer,
         audit=container.audit,
         consent_store=container.consent_store,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
     )
 
 
-def make_consent_service(container: Container | None = None) -> ConsentService:
+def make_consent_service(
+    container: Container | None = None, *, review_router: Any = None
+) -> ConsentService:
     """Wire the consent and preference store: the store, the market rules, audit,
     human-review-console.
 
@@ -54,11 +63,13 @@ def make_consent_service(container: Container | None = None) -> ConsentService:
         rule_provider=container.rule_provider,
         tracer=container.tracer,
         audit=container.audit,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
     )
 
 
-def make_substantiation_service(container: Container | None = None) -> SubstantiationService:
+def make_substantiation_service(
+    container: Container | None = None, *, review_router: Any = None
+) -> SubstantiationService:
     """Wire the green-claims gate: the tenant evidence store plus the jurisdiction pack.
 
     The pack is resolved from settings (the shipped reference pack unless the adopter points
@@ -73,5 +84,12 @@ def make_substantiation_service(container: Container | None = None) -> Substanti
         guardrail=container.guardrail,
         tracer=container.tracer,
         audit=container.audit,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
     )
+
+
+def recording_router(container: Container | None = None) -> Any:
+    """The container's review router, wrapped for ONE call so the caller can report the hand-off."""
+    from ..adapters.controls import RecordingReviewRouter
+
+    return RecordingReviewRouter((container or get_container()).review_router)

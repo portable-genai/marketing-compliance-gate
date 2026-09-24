@@ -206,7 +206,8 @@ llm.generate                                 -> narrative (narration only)
 assemble SubstantiationAssessment (cited)
 guardrail.screen(OUTPUT over the narrative)  -> blocked: audit BLOCKED + raise
 audit.record                                 -> Decision.ESCALATED when human review required
-review_router.route_assessment               -> `human-review-console` (rule R8), best effort, after the audit
+review_router.route_assessment               -> `human-review-console` (rule R8), after the audit; a failed
+                                                hand-off is reported as review_routing "failed", never raised
 ```
 
 `requires_human_review` is true whenever the asset makes any green claim at all, or fails any

@@ -437,3 +437,26 @@ variable "cmek_enabled" {
     the right answer: the stores it bound stay bound.
   EOT
 }
+
+variable "human_review_url" {
+  type        = string
+  default     = ""
+  description = "The human-review-console base URL escalations are routed to (rule R8), set as HUMAN_REVIEW_URL on the standalone service. Required with the standalone service while review routing is on: the gcp profile refuses to boot without it."
+
+  validation {
+    condition     = !var.standalone_service_enabled || !var.review_routing_enabled || can(regex("^https://", var.human_review_url))
+    error_message = "standalone_service_enabled with review_routing_enabled requires human_review_url, an https URL (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
+  }
+}
+
+variable "guardrail_enabled" {
+  type        = bool
+  default     = true
+  description = "Switch the input and output guardrail (MKT_GOV_GUARDRAIL). A cheap runtime control: on in the reference, reversible, so it takes a default."
+}
+
+variable "review_routing_enabled" {
+  type        = bool
+  default     = true
+  description = "Switch review routing to the human-review-console (MKT_GOV_REVIEW_ROUTING). A cheap runtime control: on in the reference, reversible, so it takes a default. Off needs no human_review_url."
+}

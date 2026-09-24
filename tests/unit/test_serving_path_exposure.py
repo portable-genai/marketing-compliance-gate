@@ -52,6 +52,17 @@ from marketing_compliance_gate.ports.identity import (
     declared_end_user_auth,
 )
 
+
+@pytest.fixture(autouse=True)
+def _managed_deployment_names_its_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A managed process with review routing on refuses to boot without a console.
+
+    These tests load the managed profile to exercise something other than routing, so they
+    name a console the way any managed deployment must.
+    """
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _APP_SOURCE = _REPO_ROOT / "src" / "marketing_compliance_gate" / "api" / "app.py"
 

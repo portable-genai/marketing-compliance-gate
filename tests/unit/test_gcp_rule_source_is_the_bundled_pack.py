@@ -46,6 +46,17 @@ from marketing_compliance_gate.domain.models import (
 )
 from marketing_compliance_gate.domain.services import ReviewService
 
+
+@pytest.fixture(autouse=True)
+def _managed_deployment_names_its_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A managed process with review routing on refuses to boot without a console.
+
+    These tests load the managed profile to exercise something other than routing, so they
+    name a console the way any managed deployment must.
+    """
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+
+
 CONFIG_PATH = "config/settings.yaml"
 
 #: A version is a date-shaped revision, like the green-claims pack's. Anything else is a label.

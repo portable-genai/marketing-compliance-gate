@@ -86,9 +86,10 @@ def review_marketing_asset(
       actor: Authenticated identity the request is made for.
 
     Returns:
-      A JSON-safe ``Review`` dict.
+      A JSON-safe ``Review`` dict, plus ``review_routing``: routed, failed, off or
+      not_required.
     """
-    from ..api.deps import make_review_service
+    from ..api.deps import make_review_service, recording_router
     from ..domain.models import AssetType, Market, MarketingAsset, ReviewRequest, Vertical
     from ..domain.serialization import to_jsonable
 
@@ -103,7 +104,15 @@ def review_marketing_asset(
         fields=dict(fields or {}),
     )
     request = ReviewRequest(asset=asset, actor=actor)
-    return to_jsonable(make_review_service(c).review(request, actor=actor))
+    # The hand-off never fails an already-audited review; the result says what happened to it.
+    routing = recording_router(c)
+    payload = to_jsonable(
+        make_review_service(c, review_router=routing).review(request, actor=actor)
+    )
+    if not isinstance(payload, dict):  # pragma: no cover - dataclasses serialise to objects
+        raise TypeError("a review must serialise to a JSON object")
+    payload["review_routing"] = routing.outcome.value
+    return payload
 
 
 TOOL_FUNCTIONS = (review_marketing_asset,)

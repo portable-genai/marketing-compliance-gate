@@ -62,7 +62,7 @@ def build_handlers(actor: str, container: Container | None = None) -> dict[str, 
     process-wide one. A test that borrows its posture from whatever the Makefile exported is a
     test measuring the build file, and this repository has been caught by that before.
     """
-    from ..api.deps import get_container, make_review_service
+    from ..api.deps import get_container, make_review_service, recording_router
     from ..domain.models import AssetType, Market, MarketingAsset, ReviewRequest, Vertical
     from ..domain.serialization import to_jsonable
 
@@ -84,7 +84,16 @@ def build_handlers(actor: str, container: Container | None = None) -> dict[str, 
             vertical=vertical,
         )
         request = ReviewRequest(asset=asset, actor=actor)
-        return to_jsonable(make_review_service(_container()).review(request, actor=actor))
+        bound = _container()
+        routing = recording_router(bound)
+        payload = to_jsonable(
+            make_review_service(bound, review_router=routing).review(request, actor=actor)
+        )
+        if not isinstance(payload, dict):  # pragma: no cover - dataclasses serialise to objects
+            raise TypeError("a review must serialise to a JSON object")
+        # What happened to the hand-off: routed, failed, off or not_required.
+        payload["review_routing"] = routing.outcome.value
+        return payload
 
     def search_rules(**arguments: Any) -> Any:
         market, vertical = _scope(arguments)

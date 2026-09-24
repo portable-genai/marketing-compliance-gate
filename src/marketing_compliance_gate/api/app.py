@@ -53,6 +53,7 @@ from .deps import (
     make_consent_service,
     make_review_service,
     make_substantiation_service,
+    recording_router,
 )
 from .schemas import (
     AgentCardModel,
@@ -364,14 +365,30 @@ def _to_asset(body: ReviewRequestModel | SubstantiationRequestModel) -> Marketin
     )
 
 
+def _with_routing(result: object, routing: Any) -> dict:
+    """The response body plus what happened to its hand-off to the review console.
+
+    ``review_routing`` is one of ``routed``, ``failed`` (the item is NOT in the console),
+    ``off`` (routing is switched off in this deployment) or ``not_required``.
+    """
+    body = to_jsonable(result)
+    if not isinstance(body, dict):  # pragma: no cover - dataclasses serialise to objects
+        raise TypeError("a routed result must serialise to a JSON object")
+    body["review_routing"] = routing.outcome.value
+    return body
+
+
 @app.post("/v1/review")
 def review(body: ReviewRequestModel, principal: CurrentPrincipal) -> dict:
     try:
         request = ReviewRequest(asset=_to_asset(body), actor=principal.actor)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    # The hand-off never fails an already-audited review; the response says what happened.
+    container = get_container()
+    routing = recording_router(container)
     try:
-        result = make_review_service().review(
+        result = make_review_service(container, review_router=routing).review(
             request, actor=principal.actor, tenant=principal.tenant
         )
     except GuardrailBlockedError as exc:
@@ -380,7 +397,7 @@ def review(body: ReviewRequestModel, principal: CurrentPrincipal) -> dict:
         raise HTTPException(status_code=404, detail=f"no rule set: {exc}") from exc
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
-    return to_jsonable(result)
+    return _with_routing(result, routing)
 
 
 @app.post("/v1/substantiation", tags=["green-claims"])
@@ -395,8 +412,12 @@ def substantiation(body: SubstantiationRequestModel, principal: CurrentPrincipal
         as_of = date.fromisoformat(body.as_of) if body.as_of.strip() else None
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    container = get_container()
+    routing = recording_router(container)
     try:
-        result = make_substantiation_service().assess(asset, principal, as_of=as_of)
+        result = make_substantiation_service(container, review_router=routing).assess(
+            asset, principal, as_of=as_of
+        )
     except TenantAccessDeniedError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except GuardrailBlockedError as exc:
@@ -405,7 +426,7 @@ def substantiation(body: SubstantiationRequestModel, principal: CurrentPrincipal
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
-    return to_jsonable(result)
+    return _with_routing(result, routing)
 
 
 @app.get("/v1/evidence", tags=["green-claims"])
@@ -527,15 +548,17 @@ def put_consent_record(body: ConsentRecordModel, principal: CurrentPrincipal) ->
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    container = get_container()
+    routing = recording_router(container)
     try:
-        receipt = make_consent_service().record(record, principal)
+        receipt = make_consent_service(container, review_router=routing).record(record, principal)
     except ConsentWriteRejectedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except TenantAccessDeniedError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except NotImplementedError as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
-    return to_jsonable(receipt)
+    return _with_routing(receipt, routing)
 
 
 @app.get("/v1/consent/records/{record_id}", tags=["consent"])

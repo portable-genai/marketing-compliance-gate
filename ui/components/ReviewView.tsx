@@ -1,6 +1,7 @@
 import { consentProvenance } from "@/lib/consent.mjs";
 import type { Review } from "@/lib/types";
 import { CitationList } from "./CitationList";
+import { ReviewRoutingNote } from "./ReviewRoutingNote";
 
 const MARKET_LABEL: Record<string, string> = {
   JP: "Japan",
@@ -62,6 +63,7 @@ export function ReviewView({ review }: { review: Review }) {
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
           HUMAN REVIEW REQUIRED — maker-checker gate. Do not run this asset until a
           qualified compliance officer signs off.
+          <ReviewRoutingNote routing={review.review_routing} />
         </div>
       ) : null}
 

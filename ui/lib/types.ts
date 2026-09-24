@@ -55,6 +55,9 @@ export interface ConsentSource {
   reason: string;
 }
 
+/** What happened to the human-review hand-off for one response (rule R8). */
+export type ReviewRouting = "routed" | "failed" | "off" | "not_required";
+
 export interface Review {
   id: string;
   asset_id: string;
@@ -69,6 +72,7 @@ export interface Review {
   citations: Citation[];
   approval: ApprovalRecord | null;
   requires_human_review: boolean;
+  review_routing?: ReviewRouting;
 }
 
 export interface Health {
@@ -135,6 +139,7 @@ export interface SubstantiationAssessment {
   narrative: string;
   citations: Citation[];
   requires_human_review: boolean;
+  review_routing?: ReviewRouting;
 }
 
 // One substantiation record held by the caller's OWN tenant (GET /v1/evidence).

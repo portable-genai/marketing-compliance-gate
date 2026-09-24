@@ -114,6 +114,23 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
         name  = "MKT6_S2S_ALLOWED_CALLERS"
         value = var.mkt5_caller_service_account
       }
+      # Rule R8: the console reviews, green-claim assessments and unevidenced consent grants are
+      # routed to. Required while routing is on (variables.tf): the gcp profile refuses to boot
+      # with routing on and no console named.
+      env {
+        name  = "HUMAN_REVIEW_URL"
+        value = var.human_review_url
+      }
+      # The cheap runtime controls, stated rather than inherited: each is on in the reference,
+      # and off is a deployment choice the service logs at startup.
+      env {
+        name  = "MKT_GOV_GUARDRAIL"
+        value = tostring(var.guardrail_enabled)
+      }
+      env {
+        name  = "MKT_GOV_REVIEW_ROUTING"
+        value = tostring(var.review_routing_enabled)
+      }
 
       startup_probe {
         http_get {
