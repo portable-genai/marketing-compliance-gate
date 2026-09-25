@@ -58,9 +58,13 @@ def _managed_deployment_names_its_console(monkeypatch: pytest.MonkeyPatch) -> No
     """A managed process with review routing on refuses to boot without a console.
 
     These tests load the managed profile to exercise something other than routing, so they
-    name a console the way any managed deployment must.
+    name a console, and under ``gcp`` the IAP edge audience it is reached through, the way
+    any managed deployment must.
     """
     monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+    monkeypatch.setenv(
+        "HUMAN_REVIEW_IAP_AUDIENCE", "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    )
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]

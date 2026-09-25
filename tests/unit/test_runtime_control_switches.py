@@ -28,6 +28,7 @@ from marketing_compliance_gate.api import app as app_module
 from marketing_compliance_gate.api import deps, security
 from marketing_compliance_gate.config import (
     GUARDRAIL_ENV,
+    HUMAN_REVIEW_IAP_AUDIENCE_ENV,
     HUMAN_REVIEW_URL_ENV,
     REVIEW_ROUTING_ENV,
     Container,
@@ -45,7 +46,7 @@ _SWITCHES = (GUARDRAIL_ENV, REVIEW_ROUTING_ENV)
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (*_SWITCHES, HUMAN_REVIEW_URL_ENV):
+    for name in (*_SWITCHES, HUMAN_REVIEW_URL_ENV, HUMAN_REVIEW_IAP_AUDIENCE_ENV):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("MKT_GOV_PROFILE", "local")
     warn_switched_off.cache_clear()
@@ -130,6 +131,9 @@ def test_routing_on_without_a_console_refuses_at_boot(
 def test_routing_on_under_gcp_with_a_console_loads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MKT_GOV_PROFILE", "gcp")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(
+        HUMAN_REVIEW_IAP_AUDIENCE_ENV, "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    )
     assert Settings.load(CONFIG).controls.review_routing is True
 
 
@@ -148,6 +152,9 @@ def test_model_armor_on_with_no_template_refuses_at_boot(
 ) -> None:
     monkeypatch.setenv("MKT_GOV_PROFILE", "gcp")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(
+        HUMAN_REVIEW_IAP_AUDIENCE_ENV, "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    )
     reviewed = Path(CONFIG).read_text(encoding="utf-8")
     line = next(x for x in reviewed.splitlines() if x.lstrip().startswith("template_id:"))
     settings_file = tmp_path / "settings.yaml"

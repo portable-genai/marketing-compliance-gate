@@ -1,27 +1,42 @@
 """Platform ReviewRouterPort: submit the routed review to human-review-console via ``review-kit``.
 
 Builds the kit review from the escalated compliance review and submits it to the
-human-review-console service intake (``POST /v1/service/reviews``), S2S-authenticated. The
-human-review-console base URL comes from ``HUMAN_REVIEW_URL`` and the S2S credentials from the
-shared platform env vars (``S2S_TOKEN`` / ``S2S_SIGNING_KEY``), set on the deployed service. No
-cloud SDK is involved (the kit uses stdlib ``urllib`` plus the wire-compatible S2S headers), so this
-module imports cleanly with no GCP SDK; it is bound under the ``gcp`` and ``platform`` profiles
-because it makes a real network call to a sibling service.
+human-review-console service intake (``POST /v1/service/reviews``). The base URL comes from
+``HUMAN_REVIEW_URL`` and the signed actor from ``S2S_SIGNING_KEY``; the bearer depends on how the
+console is reached:
+
+* **Through the portal's IAP edge** (``gcp``): the deployed console is an embedded app behind
+  `journey-portal`, so ``HUMAN_REVIEW_URL`` is its edge path
+  (``https://<edge-host>/apps/human-review-console/api``) and the edge accepts only a
+  Google-signed ID token minted for the IAP OAuth client id, named by
+  ``HUMAN_REVIEW_IAP_AUDIENCE``. The router mints one per submission with this service's
+  workload identity (:func:`._s2s.fetch_id_token`), so an expiring token is never reused. The
+  console authenticates this service from the IAP assertion the edge forwards, not from the
+  portal's bearer that replaces this one.
+* **Directly** (audience unset): the static ``S2S_TOKEN`` bearer from the shared platform env
+  vars.
+
+``HUMAN_REVIEW_IAP_AUDIENCE`` is read in three states: unset keeps the static bearer, emptied
+refuses at construction, and a backend-service path pasted where the client id belongs refuses
+by name. Under ``gcp`` the boot check in :mod:`marketing_compliance_gate.config` requires it
+beside the URL while routing is on. The kit itself uses stdlib ``urllib``; ``google-auth`` is
+imported only when a token is minted.
 """
 
 from __future__ import annotations
 
 from review_kit import ReviewClient
 
-from ...config import Settings
+from ...config import HUMAN_REVIEW_IAP_AUDIENCE_ENV, Settings, iap_audience_or_refuse
 from ...domain.consent import ConsentRecord
 from ...domain.models import Review, SubstantiationAssessment
-from ...envread import read_env_setting
+from ...envread import optional_setting, read_env_setting
 from .._review_payload import (
     assessment_to_kit_review,
     consent_grant_to_kit_review,
     review_to_kit_review,
 )
+from . import _s2s
 from ._s2s import SIGNING_KEY_ENV, TOKEN_ENV
 
 
@@ -32,6 +47,12 @@ class PlatformReviewRouter:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        audience = optional_setting(HUMAN_REVIEW_IAP_AUDIENCE_ENV)
+        self._audience = (
+            None
+            if audience is None
+            else iap_audience_or_refuse(HUMAN_REVIEW_IAP_AUDIENCE_ENV, audience)
+        )
 
     def _client(self) -> ReviewClient:
         base_url = read_env_setting("HUMAN_REVIEW_URL").value
@@ -39,11 +60,17 @@ class PlatformReviewRouter:
             raise RuntimeError(
                 "HUMAN_REVIEW_URL must be set to route reviews to human-review-console"
             )
-        return ReviewClient(base_url, token_env=TOKEN_ENV, signing_key_env=SIGNING_KEY_ENV)
+        audience = self._audience
+        if audience is None:
+            return ReviewClient(base_url, token_env=TOKEN_ENV, signing_key_env=SIGNING_KEY_ENV)
+        return ReviewClient(
+            base_url,
+            token_env=TOKEN_ENV,
+            signing_key_env=SIGNING_KEY_ENV,
+            bearer_provider=lambda: _s2s.fetch_id_token(audience),
+        )
 
-    def route(  # pragma: no cover - needs live human-review-console
-        self, review: Review, *, maker: str, tenant: str = ""
-    ) -> None:
+    def route(self, review: Review, *, maker: str, tenant: str = "") -> None:
         self._client().submit(
             review_to_kit_review(review, maker=maker, tenant=tenant),
             actor="mkt6-compliance-governance",

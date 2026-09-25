@@ -73,8 +73,10 @@ export MKT6_S2S_AUDIENCE="$(terraform output -raw s2s_audience)"
 # 3. Install the managed stack and run the API.
 pip install -e ".[gcp,dev]"
 export GOOGLE_CLOUD_PROJECT=your-sg-project MKT_GOV_PROFILE=gcp
-# Review routing is on by default and refuses to boot without its console (section 6).
-export HUMAN_REVIEW_URL=https://review.example.test   # or MKT_GOV_REVIEW_ROUTING=off
+# Review routing is on by default and refuses to boot without its console and the IAP edge
+# audience it is reached through (section 6).
+export HUMAN_REVIEW_URL=https://rm.example.test/apps/human-review-console/api  # or MKT_GOV_REVIEW_ROUTING=off
+export HUMAN_REVIEW_IAP_AUDIENCE=1234567890-fictionaledgeclient.apps.googleusercontent.com
 gcloud auth application-default login
 make run-api PROFILE=gcp          # FastAPI on :8105 (front with the platform ingress)
 ```
@@ -262,6 +264,16 @@ service, so there is no redaction switch.
 - **Under `gcp` or `platform`, routing on needs `HUMAN_REVIEW_URL`.** Unset, the process
   refuses to boot and says to name the console or switch routing off; it no longer starts and
   then fails every hand-off at request time.
+- **Under `gcp`, the hand-off goes through the portal's IAP edge, so routing on also needs
+  `HUMAN_REVIEW_IAP_AUDIENCE`.** `HUMAN_REVIEW_URL` is the console's edge path
+  (`https://<edge-host>/apps/human-review-console/api`) and `HUMAN_REVIEW_IAP_AUDIENCE`
+  (Terraform `human_review_iap_audience`) is the IAP OAuth client id that edge accepts. The
+  router mints a fresh ID token for it with the service's workload identity on every
+  submission, instead of sending `S2S_TOKEN`, and the console authenticates this service from
+  the IAP assertion the portal forwards, so this service account must be in the console's
+  `REVIEW_IAP_SERVICE_CALLERS_JSON` allowlist. The boot refusal names both variables and lists
+  which is missing; a backend-service path (`/projects/.../backendServices/...`) is refused as
+  the audience. With the audience unset (`platform`), the router keeps `S2S_TOKEN`.
 - **A failed hand-off does not fail the request.** The response carries
   `review_routing: "failed"` (`routed`, `off` and `not_required` are the other values), the
   failure is logged at WARNING with the exception type, and the console says the item is not
@@ -277,6 +289,8 @@ service, so there is no redaction switch.
 | Every green claim comes back `unsubstantiated` | Evidence missing its `issued_date`, tagged with the wrong tenant, or filed under another category | Fix the ingestion mapping; undated, mis-tenanted and mis-categorised evidence never counts |
 | `GreenClaimPackError` (HTTP 500) on `/v1/substantiation` | The configured green-claim pack is missing or invalid | Validate the pack (section 3b); revert `MKT_GOV_GREEN_PACK` to the shipped reference pack |
 | The revision refuses to start naming `HUMAN_REVIEW_URL` | Review routing is on under `gcp`/`platform` and no console is named | Set `HUMAN_REVIEW_URL` (Terraform `human_review_url`), or state `MKT_GOV_REVIEW_ROUTING=off` (`review_routing_enabled = false`) |
+| The revision refuses to start naming `HUMAN_REVIEW_URL` and `HUMAN_REVIEW_IAP_AUDIENCE` | Review routing is on under `gcp` and the console's edge path or the IAP edge audience is missing (the message lists which) | Set both (Terraform `human_review_url`, `human_review_iap_audience`), or state `MKT_GOV_REVIEW_ROUTING=off` |
+| Every hand-off reports `review_routing: "failed"` with a 401 or 403 | `HUMAN_REVIEW_IAP_AUDIENCE` is not the edge's IAP OAuth client id, or this service account is not in the console's `REVIEW_IAP_SERVICE_CALLERS_JSON` | Set the client id (never the backend-service path); ask the console's operator to allowlist this service account |
 | Guardrail block on a benign asset (HTTP 400) | Model Armor template too strict | Tune the `model_armor` template filter confidence levels |
 | CORS error from the embedded UI | Origin not in the per-tenant allowlist | Add the parent origin to `MKT_GOV_CORS_ORIGINS` (never `*`) |
 | HTTP 503 "refusing to serve the unauthenticated ... posture" | The bound identity adapter does not verify the end user (seeded personas, the on-prem placeholder, or no profile chosen) and the peer is not loopback | Front the service with IAP and set `MKT_GOV_PROFILE=gcp`, or serve the offline demo on loopback only. `MKT_GOV_ALLOW_INSECURE_DEMO=1` accepts the exposure deliberately |
