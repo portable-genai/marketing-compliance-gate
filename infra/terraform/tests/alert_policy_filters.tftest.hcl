@@ -25,7 +25,8 @@ variables {
   org_id     = "123456789012"
   # A standalone service routes to a review console, as a managed deployment with routing on
   # must: it refuses to boot without one.
-  human_review_url = "https://review.fictional-bank.example"
+  human_review_url          = "https://review.fictional-bank.example"
+  human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
 }
 
 run "every_alert_condition_restricts_resource_type_and_names_a_real_one" {

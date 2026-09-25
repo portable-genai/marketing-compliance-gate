@@ -121,6 +121,13 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
         name  = "HUMAN_REVIEW_URL"
         value = var.human_review_url
       }
+      # The console is an embedded app behind the portal's IAP edge, which accepts only an ID
+      # token minted for its IAP OAuth client id; the router mints one per submission for this
+      # audience. Required beside the URL while routing is on (variables.tf).
+      env {
+        name  = "HUMAN_REVIEW_IAP_AUDIENCE"
+        value = var.human_review_iap_audience
+      }
       # The cheap runtime controls, stated rather than inherited: each is on in the reference,
       # and off is a deployment choice the service logs at startup.
       env {

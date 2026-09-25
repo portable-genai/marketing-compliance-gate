@@ -441,11 +441,22 @@ variable "cmek_enabled" {
 variable "human_review_url" {
   type        = string
   default     = ""
-  description = "The human-review-console base URL escalations are routed to (rule R8), set as HUMAN_REVIEW_URL on the standalone service. Required with the standalone service while review routing is on: the gcp profile refuses to boot without it."
+  description = "The human-review-console base URL escalations are routed to (rule R8), set as HUMAN_REVIEW_URL on the standalone service: its portal edge path, https://<edge-host>/apps/human-review-console/api. Required with the standalone service while review routing is on: the gcp profile refuses to boot without it."
 
   validation {
     condition     = !var.standalone_service_enabled || !var.review_routing_enabled || can(regex("^https://", var.human_review_url))
     error_message = "standalone_service_enabled with review_routing_enabled requires human_review_url, an https URL (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
+  }
+}
+
+variable "human_review_iap_audience" {
+  type        = string
+  default     = ""
+  description = "The IAP OAuth client id of the portal edge human-review-console sits behind, <number>-<id>.apps.googleusercontent.com, set as HUMAN_REVIEW_IAP_AUDIENCE on the standalone service: the review router mints its console bearer for it on every submission. Required with the standalone service while review routing is on: the gcp profile refuses to boot without it. NOT the backend-service path IAP compares its own inbound assertion against, which is refused as a bearer audience."
+
+  validation {
+    condition     = !var.standalone_service_enabled || !var.review_routing_enabled || can(regex("^[0-9]+-[0-9a-z]+\\.apps\\.googleusercontent\\.com$", var.human_review_iap_audience))
+    error_message = "standalone_service_enabled with review_routing_enabled requires human_review_iap_audience, the portal edge's IAP OAuth client id (<number>-<id>.apps.googleusercontent.com), not a backend-service path and not a URL: the service refuses to boot with routing on and no audience named. Name it, or set review_routing_enabled = false."
   }
 }
 

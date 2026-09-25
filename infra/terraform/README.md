@@ -115,6 +115,13 @@ loaded under, and `MKT_GOV_IAP_MACHINE_TENANTS_JSON` mapping each programmatic c
 service-account address to the same tenant. Without the maps a verified caller resolves to their
 own domain or to no tenant at all, and every consent read comes back empty.
 
+**The review hand-off inputs.** With review routing on, the API needs `HUMAN_REVIEW_URL`, the
+console's portal edge path (`https://<edge-host>/apps/human-review-console/api`), and
+`HUMAN_REVIEW_IAP_AUDIENCE`, the IAP OAuth client id that edge accepts, or it refuses to boot;
+the router mints a fresh ID token for that audience on every submission. The embedded
+deployment's `api_env` names both; the standalone service takes them from `human_review_url` and
+`human_review_iap_audience`. State `MKT_GOV_REVIEW_ROUTING=false` instead to run without routing.
+
 That is now load-bearing for the REVIEW route as well as the consent routes: a review carries an
 audience subject id and no consent, and reads that subject's records under the verified tenant,
 so an unmapped caller gets a non-compliant review on every asset whose market requires consent.

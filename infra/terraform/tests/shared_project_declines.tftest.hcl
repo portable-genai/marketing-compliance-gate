@@ -17,7 +17,8 @@ variables {
   org_id     = "123456789012"
   # A standalone service routes to a review console, as a managed deployment with routing on
   # must: it refuses to boot without one.
-  human_review_url = "https://review.fictional-bank.example"
+  human_review_url          = "https://review.fictional-bank.example"
+  human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
 }
 
 run "an_embedded_install_in_a_shared_project_creates_only_what_the_console_reads" {
@@ -166,6 +167,11 @@ run "the_next_best_action_topology_still_plans_whole" {
     condition     = google_logging_project_bucket_config.worm_audit.locked
     error_message = "A deployment that names worm_locked = true must get the locked bucket."
   }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.mkt_gov[0].template[0].containers[0].env : item.value if item.name == "HUMAN_REVIEW_IAP_AUDIENCE"]) == "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    error_message = "A routing service must be told the IAP edge audience it mints its console bearer for; the gcp profile refuses to boot without it."
+  }
 }
 
 run "the_standalone_service_refuses_to_plan_without_its_image" {
@@ -278,6 +284,7 @@ run "the_standalone_service_with_routing_stated_off_needs_no_console" {
     mkt6_project_number            = "222222222222"
     shared_vpc_host_project_number = "333333333333"
     human_review_url               = ""
+    human_review_iap_audience      = ""
     review_routing_enabled         = false
   }
 
@@ -351,4 +358,87 @@ run "the_standalone_service_refuses_to_route_to_no_console" {
   }
 
   expect_failures = [var.human_review_url]
+}
+
+# With routing on, a standalone service that names no IAP edge audience is refused at plan: it
+# could not mint the only bearer the console's edge accepts, and would refuse to boot.
+run "the_standalone_service_refuses_to_route_without_the_edge_audience" {
+  command = plan
+
+  variables {
+    worm_locked                    = false
+    standalone_service_enabled     = true
+    enable_vpc_sc                  = false
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
+    shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+    s2s_audience                   = "https://mkt6-consent.internal.example"
+    mkt5_caller_service_account    = "mkt-nba-run@fictional-nba-project.iam.gserviceaccount.com"
+    mkt5_project_number            = "111111111111"
+    mkt6_project_number            = "222222222222"
+    shared_vpc_host_project_number = "333333333333"
+    human_review_iap_audience      = ""
+  }
+
+  override_data {
+    target = data.google_project.this
+    values = { number = "222222222222" }
+  }
+
+  override_data {
+    target = data.google_project.shared_vpc_host
+    values = { number = "333333333333" }
+  }
+
+  override_data {
+    target = data.google_compute_subnetwork.shared_cloud_run
+    values = {
+      private_ip_google_access = true
+      ip_cidr_range            = "10.10.0.0/26"
+      network                  = "https://www.googleapis.com/compute/v1/projects/fictional-network-host/global/networks/mkt-prod"
+    }
+  }
+
+  expect_failures = [var.human_review_iap_audience]
+}
+
+# The backend-service path IAP compares its own assertion against is not a bearer audience.
+run "the_standalone_service_refuses_a_backend_service_path_as_the_audience" {
+  command = plan
+
+  variables {
+    worm_locked                    = false
+    standalone_service_enabled     = true
+    enable_vpc_sc                  = false
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
+    shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+    s2s_audience                   = "https://mkt6-consent.internal.example"
+    mkt5_caller_service_account    = "mkt-nba-run@fictional-nba-project.iam.gserviceaccount.com"
+    mkt5_project_number            = "111111111111"
+    mkt6_project_number            = "222222222222"
+    shared_vpc_host_project_number = "333333333333"
+    human_review_iap_audience      = "/projects/000000000000/global/backendServices/1111111111111111111"
+  }
+
+  override_data {
+    target = data.google_project.this
+    values = { number = "222222222222" }
+  }
+
+  override_data {
+    target = data.google_project.shared_vpc_host
+    values = { number = "333333333333" }
+  }
+
+  override_data {
+    target = data.google_compute_subnetwork.shared_cloud_run
+    values = {
+      private_ip_google_access = true
+      ip_cidr_range            = "10.10.0.0/26"
+      network                  = "https://www.googleapis.com/compute/v1/projects/fictional-network-host/global/networks/mkt-prod"
+    }
+  }
+
+  expect_failures = [var.human_review_iap_audience]
 }

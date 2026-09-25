@@ -24,7 +24,7 @@ SIGNING_KEY_ENV = "S2S_SIGNING_KEY"
 _ACTOR_HEADER = "X-Cg-Actor"
 _ACTOR_SIG_HEADER = "X-Cg-Actor-Sig"
 
-__all__ = ["SIGNING_KEY_ENV", "TOKEN_ENV", "headers", "validate_base_url"]
+__all__ = ["SIGNING_KEY_ENV", "TOKEN_ENV", "fetch_id_token", "headers", "validate_base_url"]
 
 
 def headers(actor: str = "") -> dict[str, str]:
@@ -36,3 +36,16 @@ def headers(actor: str = "") -> dict[str, str]:
         actor_header=_ACTOR_HEADER,
         actor_sig_header=_ACTOR_SIG_HEADER,
     )
+
+
+def fetch_id_token(audience: str) -> str:
+    """Mint a Google-signed ID token for ``audience`` with this process's workload identity.
+
+    Used by the managed review router as the per-submission bearer for a console behind the
+    portal's IAP edge, whose only accepted audience is the IAP OAuth client id. The imports are
+    lazy so the offline profiles never need ``google-auth``.
+    """
+    from google.auth.transport.requests import Request
+    from google.oauth2 import id_token
+
+    return str(id_token.fetch_id_token(Request(), audience))

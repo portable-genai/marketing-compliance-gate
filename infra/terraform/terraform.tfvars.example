@@ -62,11 +62,15 @@ vpc_sc_enforce                 = false
 # Wire a real Monitoring notification channel before relying on the posture alerts.
 alert_notification_channels = []
 
-# Rule R8: the human-review-console escalations are routed to. Required with the standalone
-# service while review routing is on, because the service refuses to boot without it.
-human_review_url = "https://review.acme-bank.example"
+# Rule R8: the human-review-console escalations are routed to, at its portal edge path, and the
+# IAP OAuth client id that edge accepts (never the backend-service path). Both are required with
+# the standalone service while review routing is on, because the service refuses to boot
+# without them.
+human_review_url          = "https://rm.acme-bank.example/apps/human-review-console/api"
+human_review_iap_audience = "1234567890-acmeedgeclient.apps.googleusercontent.com"
 
 # Cheap runtime controls stay on in the reference; say so rather than inheriting the default.
-# review_routing_enabled = false runs without routing and needs no human_review_url.
+# review_routing_enabled = false runs without routing and needs no human_review_url or
+# human_review_iap_audience.
 guardrail_enabled      = true
 review_routing_enabled = true
