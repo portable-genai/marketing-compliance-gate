@@ -48,10 +48,18 @@ are one configured rule set among others, not the only frame.
 | profile  | what it is | Google Cloud SDK |
 | -------- | ---------- | ---------------- |
 | `local`  | a WORKING, offline, deterministic stack (SQLite FTS5 over the bundled rule pack) | none |
+| `live`   | the `local` stack with the narrator on a local open-weight model (Gemma 4 31B by default) through the shared `hex_service_kit.localmodel` client | none |
 | `gcp`    | the managed stack: the bundled versioned rule pack, Gemini narration, Model Armor, Cloud Logging WORM, Cloud Trace, Gen AI eval | `[gcp]` extra |
 | `onprem` | fail-fast `NotImplementedError` placeholders (the sovereign migration target) | none |
 
 `local` is the dev/test/CI default and needs no `google-cloud-*` packages.
+
+`live` reads `LOCAL_MODEL_URL` (default `http://127.0.0.1:8001/chat/completions`) and
+`LOCAL_MODEL` (default `mlx-community/gemma-4-31b-it-8bit`). Start a server with
+`uv venv --python 3.13 .mlx-venv && uv pip install --python .mlx-venv mlx-vlm`, then
+`.mlx-venv/bin/python -m mlx_vlm.server --model mlx-community/gemma-4-31b-it-8bit --port 8001`,
+and run `make run-api PROFILE=live`. Narration stays best-effort: with the server down, the
+deterministic fallback narrative stands and the findings are unchanged.
 
 ## Quick start (offline, no cloud)
 
@@ -233,7 +241,7 @@ the audit actor. `POST /v1/review` takes no `actor` field. The embedding-surface
 (per-tenant CORS allowlist, CSP `frame-ancestors`) and the three deployment shapes are
 described in [`docs/embedding-and-identity.md`](docs/embedding-and-identity.md).
 
-Config knobs: `MKT_GOV_PROFILE` (local | gcp | platform | onprem), `MKT_GOV_IAP_AUDIENCE`, `MKT_GOV_IAP_TENANT_DOMAINS_JSON`,
+Config knobs: `MKT_GOV_PROFILE` (local | live | gcp | platform | onprem), `MKT_GOV_IAP_AUDIENCE`, `MKT_GOV_IAP_TENANT_DOMAINS_JSON`,
 `MKT_GOV_IAP_MACHINE_TENANTS_JSON`,
 `MKT_GOV_CORS_ORIGINS`, `MKT_GOV_FRAME_ANCESTORS`, and the UI's `NEXT_PUBLIC_API_BASE` /
 `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_EMBED`.

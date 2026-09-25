@@ -46,7 +46,7 @@ PORT_PROTOCOLS: dict[str, type] = {
 }
 
 # Profiles whose adapters must construct + satisfy the Protocols with no GCP SDK.
-SDK_FREE_PROFILES = ("onprem", "local")
+SDK_FREE_PROFILES = ("onprem", "local", "live")
 
 
 def _settings(profile: str) -> Settings:

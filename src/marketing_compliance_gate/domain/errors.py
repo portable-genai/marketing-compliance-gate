@@ -71,3 +71,18 @@ class UnsupportedMarketError(ComplianceGovError):
 
 class UnsupportedVerticalError(ComplianceGovError):
     """Raised when a requested vertical has no configured rule set / taxonomy."""
+
+
+class ModelUnavailableError(ComplianceGovError):
+    """Raised when the narrating model cannot be reached (its server is down or not serving).
+
+    Narration is best-effort: the review and substantiation services catch it and state the
+    deterministic fallback narrative, so the findings and the verdict stand without a model.
+    """
+
+
+class ModelOutputError(ComplianceGovError):
+    """Raised when the narrating model answered but never produced a usable structured answer.
+
+    Handled like :class:`ModelUnavailableError`: the deterministic fallback narrative stands.
+    """
