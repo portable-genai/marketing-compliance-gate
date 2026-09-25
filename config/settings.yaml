@@ -47,8 +47,6 @@ models:
   location: ${MODEL_LOCATION:-asia-southeast1}
   reasoning: gemini-3.5-flash           # GA — finding narration (thinking=high)
   triage: gemini-3.5-flash         # GA — routing / triage / guardrail pre-checks
-  hard_reasoning: gemini-3.5-flash  # in-region SG commitment; no Gemini 3 PRO tier serves any location
-  use_hard_reasoning: false
 
 # The rule source. `gcp` and `local` serve the versioned rule pack bundled in the package
 # (src/marketing_compliance_gate/adapters/local/_seed.py, RULE_PACK_VERSION), so a deployment

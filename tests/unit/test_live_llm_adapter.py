@@ -139,7 +139,7 @@ def test_the_container_builds_every_port_under_live() -> None:
     assert isinstance(container.llm, LocalModelLLMAdapter)
 
 
-def test_the_banner_names_the_local_model_under_live(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_pill_names_the_local_model_under_live(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOCAL_MODEL", _ANSWERED_BY)
     settings = _settings("live")
     assert settings.runtime == "local"

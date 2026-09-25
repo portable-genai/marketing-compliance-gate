@@ -303,6 +303,9 @@ class ReviewService:
                 LlmRequest(
                     messages=(LlmMessage(role="user", content=prompt),),
                     response_schema=_SUMMARY_SCHEMA,
+                    # Free: this is prose over findings the rule engine already decided, and
+                    # nothing compares it; only the summary text is kept.
+                    temperature=None,
                 )
             )
         except Exception:  # noqa: BLE001 - narration is best-effort; the findings stand

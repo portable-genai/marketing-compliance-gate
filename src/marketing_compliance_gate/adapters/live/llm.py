@@ -12,6 +12,9 @@ As under every profile, the model narrates the findings the deterministic rule e
 green-claim coverage engine already decided; it never decides whether a rule passes, whether a
 claim is substantiated, or what the coverage is. Both callers treat narration as best-effort,
 so the two domain errors raised here leave the deterministic fallback narrative in place.
+
+The kit client notes the model that answered for the console's model pill itself, and sends no
+temperature when the request pins none, so this adapter passes both through untouched.
 """
 
 from __future__ import annotations

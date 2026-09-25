@@ -7,6 +7,10 @@ from the ``[RULE-ID]`` headers in the rendered FINDINGS block, so the narration 
 rules that the deterministic engine actually evaluated. There is no Google emulator for
 Gemini, so this path is unconditional. The LLM never decides the findings: the rule engine
 does; this adapter only turns them into prose.
+
+It notes itself as the model that answered, under the same name ``generator_model`` reports
+for it (:data:`~marketing_compliance_gate.config.STUB_MODEL`), so the console's model pill
+never names a Gemini model that this offline stub merely stands in for.
 """
 
 from __future__ import annotations
@@ -15,7 +19,9 @@ import json
 import re
 from typing import Any
 
-from ...config import Settings
+from hex_service_kit import provenance
+
+from ...config import STUB_MODEL, Settings
 from ...domain.models import LlmRequest, LlmResponse, TokenUsage
 
 # Rule ids are upper/lower alphanumerics with hyphens (e.g. "SG-BANK-CLAIM-GUARANTEED").
@@ -43,6 +49,7 @@ class LocalDeterministicLLMAdapter:
     def generate(self, request: LlmRequest) -> LlmResponse:
         rule_ids = self._rule_ids_from_request(request)
         body = self._body_for_schema(request.response_schema, rule_ids, self._user_content(request))
+        provenance.note_model(STUB_MODEL)
         return LlmResponse(
             text=json.dumps(body),
             usage=TokenUsage(input_tokens=128, output_tokens=64, thinking_tokens=32),
@@ -52,6 +59,7 @@ class LocalDeterministicLLMAdapter:
         )
 
     def classify(self, text: str, labels: list[str]) -> str:
+        provenance.note_model(STUB_MODEL)
         return labels[0] if labels else ""
 
     # ------------------------------------------------------------------ #
