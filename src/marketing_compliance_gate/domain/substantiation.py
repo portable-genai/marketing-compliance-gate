@@ -279,6 +279,9 @@ class SubstantiationService:
                 LlmRequest(
                     messages=(LlmMessage(role="user", content=prompt),),
                     response_schema=_NARRATIVE_SCHEMA,
+                    # Free: an explanation of a verdict and coverage the engine already
+                    # decided, and nothing compares it; only the narrative text is kept.
+                    temperature=None,
                 )
             )
         except Exception:  # noqa: BLE001 - narration is best-effort; the verdict stands

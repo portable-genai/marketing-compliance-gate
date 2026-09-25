@@ -8,9 +8,14 @@ floating ADK default model is never used).
 In D6 the LLM only narrates the already-decided findings of the deterministic rule engine.
 It never decides whether a rule passes, the severity, or the review outcome. The adapter
 maps the domain :class:`LlmRequest` onto ``client.models.generate_content`` (system
-instruction, temperature, max-output-tokens, a :class:`ThinkingConfig` mapped from
-``request.thinking``, and structured-output config when a response schema is supplied), and
-maps ``usage_metadata`` back onto :class:`TokenUsage`.
+instruction, max-output-tokens, a :class:`ThinkingConfig` mapped from ``request.thinking``,
+structured-output config when a response schema is supplied, and the temperature only when the
+request pins one), and maps ``usage_metadata`` back onto :class:`TokenUsage`.
+
+After every successful call it NOTES the model it called
+(:func:`hex_service_kit.provenance.note_model`), which the web layer emits as ``X-Answered-By``
+for the console's model pill. No call here attaches an online search tool, so it never notes a
+search.
 
 The residency region is resolved from the active market and **validated** against the
 per-market allow-list, so narration stays inside the configured residency boundary.
@@ -22,6 +27,8 @@ this module without ``google-genai`` installed.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+
+from hex_service_kit import provenance
 
 from ...config import Settings
 from ...domain.models import LlmRequest, LlmResponse, ThinkingLevel, TokenUsage
@@ -66,6 +73,7 @@ class GeminiLLMAdapter:
         contents = self._to_contents(request, types)
         config = self._build_config(request, types)
         response = client.models.generate_content(model=model, contents=contents, config=config)
+        provenance.note_model(model)
         return LlmResponse(
             text=getattr(response, "text", "") or "",
             usage=self._map_usage(getattr(response, "usage_metadata", None)),
@@ -83,10 +91,12 @@ class GeminiLLMAdapter:
             "Reply with the single label only, no punctuation or explanation.\n\n"
             f"Text:\n{text}"
         )
+        model = self._models.triage
         response = client.models.generate_content(
-            model=self._models.triage,
+            model=model,
             contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
             config=types.GenerateContentConfig(
+                # Pinned: a label is compared against a fixed set and routes the request.
                 temperature=0.0,
                 max_output_tokens=16,
                 thinking_config=types.ThinkingConfig(
@@ -94,6 +104,7 @@ class GeminiLLMAdapter:
                 ),
             ),
         )
+        provenance.note_model(model)
         raw = (getattr(response, "text", "") or "").strip()
         return self._match_label(raw, labels)
 
@@ -112,12 +123,15 @@ class GeminiLLMAdapter:
 
     def _build_config(self, request: LlmRequest, types: Any) -> Any:
         kwargs: dict[str, Any] = {
-            "temperature": request.temperature,
             "max_output_tokens": request.max_output_tokens,
             "thinking_config": types.ThinkingConfig(
                 thinking_level=self._thinking_level(request.thinking, types)
             ),
         }
+        # Omitted, never defaulted, when the request does not pin one: a free call samples at
+        # the model's own default, and a model that rejects the parameter still accepts it.
+        if request.temperature is not None:
+            kwargs["temperature"] = request.temperature
         if request.system_instruction:
             kwargs["system_instruction"] = request.system_instruction
         if request.response_schema is not None:

@@ -91,8 +91,9 @@ def build_root_agent(settings: Settings | None = None) -> LlmAgent:
     if mcp_toolset is not None:
         tools.append(mcp_toolset)
 
+    # No temperature: the agent drafts and explains around tools that decide, so it samples at
+    # the model's own default rather than at a number chosen here.
     generate_content_config = types.GenerateContentConfig(
-        temperature=0.2,
         thinking_config=types.ThinkingConfig(thinking_budget=-1),
     )
 

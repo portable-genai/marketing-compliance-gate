@@ -56,3 +56,42 @@ body {
   background-color: rgb(166 182 204);
   border-radius: 9999px;
 }
+
+/* The model pills: which model answered the last request, and Search when it searched.
+   Fixed at the top right, above the page's own 24px top padding, so they stay in view without
+   covering any of the console's controls. Each pill carries its own opaque background, so it
+   reads over whatever scrolls beneath it. This console is light-only (`color-scheme: light`), so
+   there is no dark variant to keep in step. */
+.model-pills {
+  position: fixed;
+  top: 4px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  max-width: calc(100vw - 20px);
+}
+
+.model-pill {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 9px;
+  border: 1px solid;
+  border-radius: 9999px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.model-pill.configured {
+  @apply border-dashed border-ink-300 bg-ink-50 text-ink-500;
+}
+
+.model-pill.answered {
+  @apply border-ink-900 bg-ink-900 text-white;
+}
+
+.model-pill.search {
+  @apply border-emerald-600 bg-emerald-600 text-white;
+}

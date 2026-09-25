@@ -1,7 +1,9 @@
-"""The banner's server half: this service names its runtime and its model.
+"""The model pill's starting point: this service names its runtime and its model.
 
-Every served UI in the fleet states, at the top of every page, where it is running and
-which model answers (org decision, 2026-08-30). The console must never infer either. A
+Every served console shows the model at the top right of every page, dimmed and titled with
+where it runs until an answer arrives, then the model that ANSWERED (owner decision,
+2026-09-23; ``tests/unit/test_answer_provenance.py`` holds that half). The console must never
+infer the starting values. A
 page that read its runtime from ``window.location`` would be right until the deployment
 served through a proxy, and wrong silently after that; a page that hard-coded a model name
 would keep printing it after the binding changed.
@@ -35,8 +37,8 @@ def test_the_runtime_says_where_the_process_runs_not_whose_model_it_calls(
 ) -> None:
     """``onprem`` reads ``local``, and there that is the whole selling point.
 
-    The banner states WHERE the process runs, and the model half states WHOSE model
-    answers, precisely so the two facts cannot be collapsed into one misleading sentence.
+    The pill's title states WHERE the process runs, and its text states WHOSE model answers,
+    precisely so the two facts cannot be collapsed into one misleading sentence.
     """
     assert dataclasses.replace(settings, profile=profile).runtime == expected
 
