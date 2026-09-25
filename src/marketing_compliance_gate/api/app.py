@@ -24,7 +24,7 @@ from hex_service_kit.logging import configure_logging
 from hex_service_kit.netdefaults import ConfiguredEmptyError, read_env_setting
 from hex_service_kit.web import add_loopback_exposure_guard, make_require_service_caller
 
-from ..config import Settings, end_user_auth_kind, resolve_profile
+from ..config import LAPTOP_PROFILES, Settings, end_user_auth_kind, resolve_profile
 from ..domain.consent import (
     ChannelPreference,
     ConsentBasis,
@@ -188,10 +188,13 @@ def _cors_origins() -> list[str]:
             [origin.strip() for origin in setting.value.split(",") if origin.strip()],
             _CORS_ORIGINS_ENV,
         )
+    exposure = get_container().settings.exposure_profile
     origins = cors_allowlist(
-        get_container().settings.exposure_profile,
+        exposure,
         origins_env=_CORS_ORIGINS_ENV,
         dev_origins=tuple(_DEV_ORIGINS),
+        # Both laptop profiles trust the localhost dev origins; an unconsented run matches none.
+        local_profile=exposure if exposure in LAPTOP_PROFILES else "local",
     )
     _refuse_wildcard(origins, _CORS_ORIGINS_ENV)
     return origins
@@ -208,7 +211,11 @@ _SERVICE_NAME = "marketing-compliance-gate"
 # colour an error or drive a log-based metric from one, and no trace field, so a log line
 # never joined the request it came from. The profile comes from `resolve_profile`, the one
 # reader of MKT_GOV_PROFILE that the profile drift guard permits.
-configure_logging(resolve_profile().profile, service=_SERVICE_NAME)
+# Both laptop profiles log human-readable lines, the way `local` always has.
+_LOG_PROFILE = resolve_profile().profile
+configure_logging(
+    "local" if _LOG_PROFILE in LAPTOP_PROFILES else _LOG_PROFILE, service=_SERVICE_NAME
+)
 
 
 app = FastAPI(

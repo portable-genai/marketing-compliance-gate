@@ -23,7 +23,7 @@ green claim is substantiated, or what the coverage figure is.
 | Catalog id | `marketing-compliance-gate` |
 | Package | `src/marketing_compliance_gate/` |
 | Profile variable | `MKT_GOV_PROFILE` |
-| Adapter families | `gcp`, `local`, `onprem`, `platform` |
+| Adapter families | `gcp`, `local`, `live` (local model via `hex_service_kit.localmodel`), `onprem`, `platform` |
 | Gate | `make gate` |
 
 `config.resolve_profile` is the one place that reads that variable, in three states: unset is

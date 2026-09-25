@@ -60,13 +60,16 @@ def _configure_logging_once() -> None:
     """
     from hex_service_kit.logging import configure_logging
 
-    from ..config import resolve_profile
+    from ..config import LAPTOP_PROFILES, resolve_profile
 
     try:
         profile = resolve_profile().profile
     except Exception:  # noqa: BLE001 - see the docstring: never pre-empt the command's error
         profile = "local"
-    configure_logging(profile, service="marketing-compliance-gate")
+    # Both laptop profiles log human-readable lines, the way `local` always has.
+    configure_logging(
+        "local" if profile in LAPTOP_PROFILES else profile, service="marketing-compliance-gate"
+    )
 
 
 def _fail(message: str, *, code: int = _RUNTIME_EXIT) -> Any:
