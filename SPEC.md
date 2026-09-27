@@ -46,7 +46,7 @@ the rule engine.
 | `LlmPort` | `generate`, `classify` | Gemini (`gemini-3.5-flash`, `gemini-3.5-flash`) |
 | `GuardrailPort` | `screen` | Model Armor |
 | `AuditSinkPort` | `record` | Cloud Logging locked WORM bucket |
-| `ObservabilityTracerPort` | `span`, `record_token_usage` | Cloud Trace via OpenTelemetry |
+| `ObservabilityTracerPort` | `span`, `record_token_usage` | OpenTelemetry, OTLP through the agent-observability collector to Cloud Trace (`hex_service_kit.tracing.build_tracer`) |
 | `EvaluationGatePort` | `evaluate`, `gate` | Gen AI evaluation service (`model-quality-gate`) |
 | `AgentRegistryPort` | `register`, `get`, `list` | A2A AgentCard registry (`agent-registry`) |
 | `ToolCatalogPort` | `list_tools`, `get_tool` | governed MCP tool catalog |

@@ -20,7 +20,7 @@ dependencies = [
   # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the model-quality-gate
   # promotion-gate client the platform eval adapter uses. review-kit: the rule R8
   # producer client that routes an escalated review to the human-review-console maker-checker console.
-  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.10",
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.11",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.3",
   "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.2",
   # Shared APAC national-identifier rows and the two-part, pack-independent leak scorer.
@@ -47,8 +47,14 @@ gcp = [
   # that store documents in Firestore, so the fleet resolves to one version.
   "google-cloud-firestore>=2.16",
   "google-cloud-logging>=3.11",
-  "opentelemetry-sdk>=1.27",
-  "opentelemetry-exporter-gcp-trace>=1.7",
+  # The commons tracer (hex_service_kit.tracing) exports OTLP to the agent-observability
+  # collector. Its `otel` extra is spelled out rather than named: that extra floors
+  # opentelemetry-sdk at 1.44, above the <=1.42.1 ceiling google-adk declares, so the two
+  # cannot resolve together.
+  "opentelemetry-sdk>=1.39",
+  "opentelemetry-exporter-otlp-proto-http>=1.39",
+  "requests>=2.31",
+  "google-auth>=2.30",
   "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",
 ]

@@ -168,8 +168,8 @@ adapters:
     live: marketing_compliance_gate.adapters.local.audit:LocalAppendOnlyAuditAdapter
     onprem: marketing_compliance_gate.adapters.onprem.audit:OnPremAuditAdapter
   tracer:
-    gcp: marketing_compliance_gate.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
-    platform: marketing_compliance_gate.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    gcp: marketing_compliance_gate.adapters.gcp.tracer:CloudTracerAdapter
+    platform: marketing_compliance_gate.adapters.gcp.tracer:CloudTracerAdapter
     local: marketing_compliance_gate.adapters.local.tracer:LocalNoopTracerAdapter
     live: marketing_compliance_gate.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: marketing_compliance_gate.adapters.onprem.tracer:OnPremTracerAdapter
