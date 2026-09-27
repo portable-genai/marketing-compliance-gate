@@ -98,6 +98,16 @@ resource "google_cloud_run_v2_service" "mkt_gov" {
         name  = "MKT_GOV_REGION"
         value = var.region
       }
+      # Where spans go: the agent-observability collector, which deletes GenAI content before
+      # any Google sink. The gcp tracer refuses to build without it (decision D1).
+      env {
+        name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+        value = var.otlp_endpoint
+      }
+      env {
+        name  = "OTEL_EXPORTER_OTLP_AUDIENCE"
+        value = var.otlp_endpoint
+      }
       env {
         name  = "PORT"
         value = tostring(local.container_port)

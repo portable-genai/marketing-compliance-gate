@@ -471,3 +471,14 @@ variable "review_routing_enabled" {
   default     = true
   description = "Switch review routing to the human-review-console (MKT_GOV_REVIEW_ROUTING). A cheap runtime control: on in the reference, reversible, so it takes a default. Off needs no human_review_url."
 }
+
+variable "otlp_endpoint" {
+  type        = string
+  default     = ""
+  description = "The agent-observability OpenTelemetry collector (that stack's otlp_endpoint output), set on the standalone service as OTEL_EXPORTER_OTLP_ENDPOINT and as OTEL_EXPORTER_OTLP_AUDIENCE, the audience of the ID token each export carries. Required with the standalone service: under MKT_GOV_PROFILE=gcp the tracer refuses to build without it, because there is no direct Cloud Trace path to fall back to (decision D1). The service's runtime account must also be listed in the collector's otel_caller_service_accounts. The portal-embedded API receives the same two variables from journey-portal instead."
+
+  validation {
+    condition     = !var.standalone_service_enabled || can(regex("^https://[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$", var.otlp_endpoint))
+    error_message = "standalone_service_enabled requires otlp_endpoint, the agent-observability collector's exact https origin: the gcp tracer refuses to build without it."
+  }
+}

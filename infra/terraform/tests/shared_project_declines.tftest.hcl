@@ -19,6 +19,8 @@ variables {
   # must: it refuses to boot without one.
   human_review_url          = "https://review.fictional-bank.example"
   human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+  # And exports spans through a collector: the gcp tracer refuses to build without one.
+  otlp_endpoint = "https://otel-collector.fictional-bank.example"
 }
 
 run "an_embedded_install_in_a_shared_project_creates_only_what_the_console_reads" {
@@ -441,4 +443,29 @@ run "the_standalone_service_refuses_a_backend_service_path_as_the_audience" {
   }
 
   expect_failures = [var.human_review_iap_audience]
+}
+
+# Decision D1: the gcp tracer exports only through the agent-observability collector and refuses
+# to build without one, so a standalone service that names none is refused at plan rather than
+# failing its first traced request.
+run "reject_a_standalone_service_without_a_collector" {
+  command = plan
+
+  variables {
+    cmek_enabled                   = true
+    worm_locked                    = true
+    standalone_service_enabled     = true
+    otlp_endpoint                  = ""
+    container_image                = "asia-southeast1-docker.pkg.dev/fictional-marketing-project/marketing-compliance-gate/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    shared_vpc_network             = "projects/fictional-network-host/global/networks/mkt-prod"
+    shared_vpc_subnetwork          = "projects/fictional-network-host/regions/asia-southeast1/subnetworks/cloud-run-mkt"
+    s2s_audience                   = "https://mkt6-consent.internal.example"
+    mkt5_caller_service_account    = "mkt-nba-run@fictional-nba-project.iam.gserviceaccount.com"
+    access_policy_id               = "987654321098"
+    mkt5_project_number            = "111111111111"
+    mkt6_project_number            = "222222222222"
+    shared_vpc_host_project_number = "333333333333"
+    manage_audit_config            = true
+  }
+  expect_failures = [var.otlp_endpoint]
 }
