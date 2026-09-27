@@ -21,6 +21,8 @@ variables {
   # must: it refuses to boot without one.
   human_review_url          = "https://review.fictional-bank.example"
   human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+  # And exports spans through a collector: the gcp tracer refuses to build without one.
+  otlp_endpoint = "https://otel-collector.fictional-bank.example"
 }
 
 run "the_registry_is_regional_docker_cmek_and_immutably_tagged" {
