@@ -88,7 +88,7 @@ variable "worm_locked" {
 
 variable "manage_org_policies" {
   type        = bool
-  default     = true
+  default     = false
   description = <<-EOT
     Whether THIS stack writes the project's Org Policies (gcp.resourceLocations,
     iam.disableServiceAccountKeyCreation, compute.vmExternalIpAccess and
@@ -101,6 +101,9 @@ variable "manage_org_policies" {
     This stack derives the STRICTEST location form from its own region, so applying it into a
     shared project narrows gcp.resourceLocations to that region and breaks every sibling that
     reaches another one, and nothing in this stack's plan says so.
+
+    Off by default since 2026-10-02 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
 }
 
@@ -303,9 +306,12 @@ variable "manage_shared_vpc_sc_perimeter" {
     Whether this module owns the one regular perimeter shared by next-best-action, marketing-compliance-gate and their Shared
     VPC host project. Exactly one stack may own it. The governance stack is the reference
     owner; set false only after moving/importing the perimeter into another Terraform state.
+
+    Off by default since 2026-10-02 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "shared_vpc_sc_perimeter_name" {
