@@ -21,7 +21,7 @@ worm_locked    = true
 # manage_org_policies           = false
 # manage_audit_config           = false
 # enable_vpc_sc                 = false
-# model_armor_full_capabilities = false
+model_armor_full_capabilities = false # asia-southeast1 refuses the malicious-URI filter; state true in a region that serves it
 #
 # Embedding host: the portal's API runtime identity, filled after the portal apply mints it.
 # additional_serving_service_accounts = ["journey-a-000000@acme-mkt-governance-sg-prod.iam.gserviceaccount.com"]
