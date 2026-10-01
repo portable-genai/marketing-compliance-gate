@@ -290,9 +290,12 @@ variable "enable_vpc_sc" {
     Participate in the shared next-best-action, marketing-compliance-gate VPC Service Controls contract. The designated owner
     creates it in DRY-RUN mode first (vpc_sc.tf, vpc_sc_enforce = false): confirm no legitimate
     path is broken in the dry-run audit logs before enforcing.
+
+    Off by default since 2026-10-01 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "manage_shared_vpc_sc_perimeter" {

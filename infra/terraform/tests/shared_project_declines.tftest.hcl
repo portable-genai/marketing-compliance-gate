@@ -21,6 +21,10 @@ variables {
   human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
   # And exports spans through a collector: the gcp tracer refuses to build without one.
   otlp_endpoint = "https://otel-collector.fictional-bank.example"
+  # Slice 7 turned these reversible controls off by default on 2026-10-01. The runs in this
+  # file were written under the old default, so the file states it; a run that sets one
+  # explicitly still overrides it. posture_defaults.tftest.hcl pins the new default.
+  enable_vpc_sc = true
 }
 
 run "an_embedded_install_in_a_shared_project_creates_only_what_the_console_reads" {
