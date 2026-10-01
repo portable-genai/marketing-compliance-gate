@@ -10,7 +10,7 @@ checker approves or rejects.
 Pipeline (each step wrapped in ``tracer.span``; audited at the end):
 
     tracer.span("review.build"):
-      guardrail.screen(INPUT over the asset body)   [blocked -> audit BLOCKED + raise]
+      guardrail.screen(INPUT over title + body)     [blocked -> audit BLOCKED + raise]
       -> rule_provider.rule_set: load the (market, vertical) RuleSet
                                           [empty -> RuleSetEmptyError]
       -> consent_store.snapshot(tenant, asset.audience_subject_id)
@@ -150,7 +150,8 @@ class ReviewService:
         asset = request.asset
         actor = actor or request.actor or "service"
         with self._span("review.build", market=asset.market.value, vertical=asset.vertical.value):
-            self._guard(asset.body or asset.title, Direction.INPUT, actor)
+            # The title is quoted into the narration prompt, so it is screened with the body.
+            self._guard(self._request_text(asset), Direction.INPUT, actor)
 
             rule_set = self._rules.rule_set(asset.market, asset.vertical)
             if not rule_set.rules:
@@ -267,6 +268,11 @@ class ReviewService:
                 f.rule_id,
             ),
         )
+
+    @staticmethod
+    def _request_text(asset: MarketingAsset) -> str:
+        """The caller-supplied copy the prompt carries, title and body, for the INPUT screen."""
+        return f"{asset.title}\n{asset.body}"
 
     @staticmethod
     def _review_id(asset: MarketingAsset) -> str:

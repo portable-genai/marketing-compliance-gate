@@ -179,7 +179,8 @@ class SubstantiationService:
             market=asset.market.value,
             vertical=asset.vertical.value,
         ):
-            self._guard(asset.body or asset.title, Direction.INPUT, actor)
+            # The title is quoted into the narration prompt, so it is screened with the body.
+            self._guard(self._request_text(asset), Direction.INPUT, actor)
 
             evidence = self.evidence_for_asset(asset.id, principal)
             claims, verdict, coverage = self._coverage.assess(
@@ -235,6 +236,11 @@ class SubstantiationService:
         if verdict is not SubstantiationVerdict.NOT_APPLICABLE:
             return True
         return any(f.failed for f in findings)
+
+    @staticmethod
+    def _request_text(asset: MarketingAsset) -> str:
+        """The caller-supplied copy the prompt carries, title and body, for the INPUT screen."""
+        return f"{asset.title}\n{asset.body}"
 
     @staticmethod
     def _assessment_id(asset: MarketingAsset, tenant: str) -> str:
